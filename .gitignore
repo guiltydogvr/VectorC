@@ -1,0 +1,47 @@
+# General OS files
+.DS_Store
+Thumbs.db
+
+# Xcode specific
+*.xcworkspace/
+*.xcuserdata/
+*.xccheckout/
+*.moved-aside
+*.pbxuser
+*.pbxproj
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+
+# Xcode Derived Data (build artifacts)
+DerivedData/
+build/
+*.build/
+*.xcconfig
+
+# VS Code specific
+.vscode/
+*.code-workspace
+
+# Premake5 generated files
+Makefile
+*.make
+*.xcodeproj
+obj/
+bin/
+
+# Object files and compiled binaries
+*.o
+*.out
+*.a
+*.so
+*.dylib
+*.exe
+*.dll
+*.pdb
+*.obj
+
+# Logs and Debug files
+*.log
+*.dSYM/

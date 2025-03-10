@@ -38,8 +38,9 @@ typedef struct ProgramNode {
 
 // Function node
 typedef struct FunctionNode {
-	char* name;                      // Function identifier
-	struct StatementNode* body;      // Body of the function
+	char* name;						// Function identifier
+	struct StatementNode* body;		// Body of the function
+	struct FunctionNode* next; // Allows linking multiple functions
 } FunctionNode;
 
 // Statement node

@@ -380,12 +380,12 @@ const char* getTokenName(TokenType tokenType)
 const Token* scanTokens(void)
 {
 	Token* tokens = NULL;
-	
+
 	while (!isAtEnd()) {
 		Token token = scanToken();
-		if (token.type != TOKEN_ERROR && token.type != TOKEN_EOF) {
+		if (token.type != TOKEN_ERROR) {
 			arrput(tokens, token);
-		} else if (token.type == TOKEN_ERROR) {
+		} else {
 			int32_t len = token.length;
 			char keyword[len+1];
 
@@ -394,28 +394,11 @@ const Token* scanTokens(void)
 			printf("Error: %s\n", keyword);
 			exit(EXIT_FAILURE);
 		}
-/*
-		int32_t len = token.length;
-		char keyword[len+1];
-		switch (token.type)
-		{
-			case TOKEN_IDENTIFIER:
-			case TOKEN_NUMBER:
-				strncpy(keyword, token.start, token.length);
-				keyword[token.length] = '\0';
-//				printf("Token: %s (%s)\n", getTokenName(token.type), keyword);
-				break;
-			case TOKEN_ERROR:
-				strncpy(keyword, token.start, token.length);
-				keyword[token.length] = '\0';
-				printf("Error: %s\n", keyword);
-				exit(EXIT_FAILURE);
-			default:
-//				printf("Token: %s\n", getTokenName(token.type));
-		}
-*/
 	}
 
-//	tokens.add(new Token(EOF, "", null, line));
+	// ✅ Append `TOKEN_EOF` to the tokens list
+	Token eofToken = makeToken(TOKEN_EOF);
+	arrput(tokens, eofToken);
+
 	return tokens;
 }

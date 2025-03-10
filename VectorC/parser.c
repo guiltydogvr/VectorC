@@ -54,64 +54,90 @@ StatementNode* parseStatement(Parser* parser) {
 
 StatementNode* parseStatementList(Parser* parser) {
 	if (match(parser, TOKEN_RIGHT_BRACE)) {
-		return NULL; // Empty statement list
+		return NULL; // Empty statement list, but now we properly consume the '}'
 	}
 
 	StatementNode* stmt = parseStatement(parser);
-/*
-	StatementNode* nextStmt = parseStatementList(parser);
-	if (nextStmt) {
-		// Append next statement to the current one
-		stmt->next = nextStmt; // Add `next` pointer to StatementNode struct
-	}
-*/
+
 	return stmt;
 }
 
 FunctionNode* parseFunction(Parser* parser) {
-	// Parse return type
 	if (!match(parser, TOKEN_INT) && !match(parser, TOKEN_VOID)) {
 		printf("Error: Expected return type ('int' or 'void').\n");
 		exit(EXIT_FAILURE);
 	}
-//	const Token* typeToken = &parser->tokens[parser->current - 1];
 
-	// Parse function name
 	if (!match(parser, TOKEN_IDENTIFIER)) {
 		printf("Error: Expected function name.\n");
 		exit(EXIT_FAILURE);
 	}
 	const Token* nameToken = &parser->tokens[parser->current - 1];
 
-	// Parse parameters
 	if (!match(parser, TOKEN_LEFT_PAREN)) {
 		printf("Error: Expected '(' after function name.\n");
 		exit(EXIT_FAILURE);
 	}
-	if (!match(parser, TOKEN_VOID)) { // For simplicity, assume 'void' only
+
+	if (!match(parser, TOKEN_VOID)) {
 		printf("Error: Only 'void' parameters supported for now.\n");
 		exit(EXIT_FAILURE);
 	}
+
 	if (!match(parser, TOKEN_RIGHT_PAREN)) {
 		printf("Error: Expected ')' after parameter list.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	// Parse body
 	if (!match(parser, TOKEN_LEFT_BRACE)) {
 		printf("Error: Expected '{' to start function body.\n");
 		exit(EXIT_FAILURE);
 	}
+
 	StatementNode* body = parseStatementList(parser);
 
-	char functionName[nameToken->length+1];
+	// ✅ Ensure function body ends correctly
+	if (!match(parser, TOKEN_RIGHT_BRACE)) {
+		printf("Error: Expected '}' at end of function body.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	char functionName[nameToken->length + 1];
 	strncpy(functionName, nameToken->start, nameToken->length);
 	functionName[nameToken->length] = '\0';
+
 	return createFunctionNode(functionName, body);
 }
+
 ProgramNode* parseProgram(Parser* parser) {
-	FunctionNode* function = parseFunction(parser);
-	return createProgramNode(function);
+	ProgramNode* program = NULL;
+	FunctionNode* lastFunction = NULL;
+
+	while (currentToken(parser)->type != TOKEN_EOF) {
+		// Ensure we are parsing a valid function definition
+		if (currentToken(parser)->type == TOKEN_INT || currentToken(parser)->type == TOKEN_VOID) {
+			FunctionNode* function = parseFunction(parser);
+
+			if (!program) {
+				program = createProgramNode(function);
+			} else {
+				// Append the function to the existing program
+				lastFunction->next = function; // Requires `next` in `FunctionNode`
+			}
+			lastFunction = function;
+		} else {
+			// Handle EOF properly
+			if (currentToken(parser)->type == TOKEN_EOF) {
+				return program;  // Stop parsing safely at EOF
+			}
+
+			// Unexpected token error
+			printf("Error: Unexpected token '%.*s' (type: %d) at top level.\n",
+				   (int)currentToken(parser)->length, currentToken(parser)->start, currentToken(parser)->type);
+			exit(EXIT_FAILURE);
+		}
+	}
+	return program;
 }
 
 ProgramNode* parseProgramTokens(const Token* tokens) {

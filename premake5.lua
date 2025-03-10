@@ -16,10 +16,10 @@ project "VectorC"
    location "VectorC"
    targetname "vecc"
    kind "ConsoleApp"
-   architecture "x86_64"  
+--   architecture "x86_64"  
    language "C"
-   buildoptions { "-std=c17 -arch x86_64" } --, "-target x86_64-apple-darwin" } -- -gno-column-info -ffast-math -Xclang -flto-visibility-public-std" }
-   linkoptions { "-g -gno-column-info -arch x86_64" } --, "-target x86_64-apple-darwin" } 
+   buildoptions { "-std=c17" } ---arch x86_64" } --, "-target x86_64-apple-darwin" } -- -gno-column-info -ffast-math -Xclang -flto-visibility-public-std" }
+   linkoptions { "-g -gno-column-info" } -- -arch x86_64" } --, "-target x86_64-apple-darwin" } 
    targetdir "bin/%{cfg.buildcfg}"
 
    files 

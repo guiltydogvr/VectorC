@@ -80,7 +80,7 @@ int main(int argc, const char * argv[]) {
 	
 	Program asmProgram;
 
-	Architecture arch = /*ARCH_X64; //*/ ARCH_ARM64;
+	Architecture arch = ARCH_X64; //*/ ARCH_ARM64;
 	switch (arch)
 	{
 		case ARCH_X64:
