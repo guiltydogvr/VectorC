@@ -25,6 +25,7 @@ typedef struct ARM64Instruction {
 } ARM64Instruction;
 
 // Function declarations for ARM64 code generation
+const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize);
 void generateARM64Code(const ARM64Instruction* instr);
 void printARM64Function(const Function* function);
 

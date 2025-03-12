@@ -54,6 +54,7 @@ typedef struct Operand {
 Operand createImmOperand(int value);
 Operand createRegisterOperand(const char* regName);
 
+void generateCode(const Program* program, const char* outputFilename);
 void printAsmProgram(const Program* program);
 
 #endif /* ast_asm_common_h */

@@ -10,7 +10,7 @@
 void translateFunctionToX64(const FunctionNode* cFunction, Function* asmFunction) {
 	// Example: Translate a function like `int main() { return 42; }`
 	Operand src = createImmOperand(42);
-	Operand dst = createRegisterOperand("rax");
+	Operand dst = createRegisterOperand("eax");
 
 	X64Instruction* instructions = malloc(sizeof(X64Instruction) * 2);
 	instructions[0] = (X64Instruction){X64_MOV, src, dst};
@@ -45,7 +45,7 @@ TranslationContext createTranslationContext(Architecture arch) {
 
 // Allocate a register (simplified example)
 const char* allocateRegister(TranslationContext* ctx) {
-	static const char* x64Registers[] = {"rax", "rbx", "rcx", "rdx"};
+	static const char* x64Registers[] = {"eax", "ebx", "ecx", "edx"};
 	static const char* arm64Registers[] = {"x0", "x1", "x2", "x3"};
 	switch (ctx->arch)
 	{
@@ -69,7 +69,7 @@ void translateReturnToX64(const StatementNode* stmt, X64Instruction** instructio
 
 		if (expr->type == EXP_CONSTANT) {
 			Operand src = createImmOperand(expr->value.intValue);
-			Operand dst = createRegisterOperand("rax"); // Return value in RAX for x64
+			Operand dst = createRegisterOperand("%eax"); // Return value in EAX for x64
 			(*instructions)[(*count)++] = (X64Instruction){X64_MOV, src, dst};
 			(*instructions)[(*count)++] = (X64Instruction){X64_RET};
 		}

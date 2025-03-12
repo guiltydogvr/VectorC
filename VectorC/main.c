@@ -49,7 +49,30 @@ int main(void)
  */
 int main(int argc, const char * argv[]) {
 	// insert code here...
-	const char* source = readFile(argv[1]); //"return_2.c");
+
+	char preprocessedFilename[256];
+	strcpy(preprocessedFilename, argv[1]);
+	strncpy(preprocessedFilename + (strlen(preprocessedFilename) - 1), "i", 1);
+
+	char sourceFilename[256];
+	strcpy(sourceFilename, argv[1]);
+	strncpy(sourceFilename + (strlen(sourceFilename) - 1), "s", 1);
+
+	char outFilename[256];
+	char* find = strchr(argv[1], '.');
+	assert(find != NULL);
+	size_t len = find - argv[1];
+	strncpy(outFilename, argv[1], len);
+	outFilename[len] = '\0';
+
+	char commandline[2048] = "";
+	sprintf(commandline, "gcc -E -P %s -o %s", argv[1], preprocessedFilename);
+	int32_t res = system(commandline);
+	if (res == -1) {
+		perror("Error executing system command");
+		return EXIT_FAILURE;
+	}
+	const char* source = readFile(preprocessedFilename); //"return_2.c");
 	initLexer(source);
 	const Token* tokens = scanTokens();
 	size_t tokenCount = arrlenu(tokens);
@@ -93,8 +116,15 @@ int main(int argc, const char * argv[]) {
 			printf("Unsupported architecture`n");
 	}
 	
-//	generateCode(&asmProgram.functions[0])
-	printAsmProgram(&asmProgram);
+	generateCode(&asmProgram, sourceFilename);
+//	printAsmProgram(&asmProgram);
+	
+	sprintf(commandline, "gcc %s -o %s", sourceFilename, outFilename);
+	res = system(commandline);
+	if (res == -1) {
+		perror("Error executing system command");
+		return EXIT_FAILURE;
+	}
 #endif
 	destroyLexer();
 	return 0;
