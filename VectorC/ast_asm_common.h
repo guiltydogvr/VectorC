@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 typedef enum {
 	ARCH_X64,
@@ -49,6 +50,8 @@ typedef struct Operand {
 		const char* regName; // Register name
 	};
 } Operand;
+
+const char* getArchitectureName(Architecture arch);
 
 // Helper functions for operands
 Operand createImmOperand(int value);

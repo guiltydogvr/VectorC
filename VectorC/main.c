@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "lexer.h"
 #include "parser.h"
@@ -40,29 +41,76 @@ static char* readFile(const char * path) {
 	return buffer;
 }
 
-/*
-int main(void)
-{
-	return 2;
-};
- 
- */
 int main(int argc, const char * argv[]) {
 	// insert code here...
+	bool bLex = false, bParse = false, bCodegen = false;
+	Architecture arch = ARCH_X64;
+
+	// The source filename (if any)
+	const char *inputFilename = NULL;
+
+	// Start parsing from argv[1] onwards (argv[0] is typically the program name).
+	for (int i = 1; i < argc; i++) {
+		// First check if it's one of our known switches.
+		
+		// 1) --lex
+		if (strcmp(argv[i], "--lex") == 0) {
+			bLex = true;
+		}
+		// 2) --parse
+		else if (strcmp(argv[i], "--parse") == 0) {
+			bParse = true;
+		}
+		// 3) --codegen
+		else if (strcmp(argv[i], "--codegen") == 0) {
+			bCodegen = true;
+		}
+		// 4) -arch=???
+		else if (strncmp(argv[i], "-arch=", 6) == 0) {
+			const char* archValue = argv[i] + 6; // the part after '-arch='
+			
+			if (strcmp(archValue, "x64") == 0) {
+				arch = ARCH_X64;
+			} else if (strcmp(archValue, "arm64") == 0) {
+				arch = ARCH_ARM64;
+			} else {
+				fprintf(stderr, "Error: Unknown architecture '%s'\n", archValue);
+				return 1;
+			}
+		}
+		// Otherwise, we treat it as the source filename (or error if we already have one).
+		else {
+			// If we already have a source filename, raise an error or handle as you see fit.
+			if (inputFilename != NULL) {
+				fprintf(stderr, "Error: Multiple source files specified ('%s' and '%s')\n", inputFilename, argv[i]);
+				return 1;
+			}
+			inputFilename = argv[i];
+		}
+	}
+
+	// If no source filename was found, we can decide what to do.
+	// For example, error out, or continue if your app doesn't need a file, etc.
+	if (inputFilename == NULL) {
+		// We can consider no file an error or just proceed differently:
+		fprintf(stderr, "No source filename provided.\n");
+		return EXIT_FAILURE;
+	}
+
 
 	char preprocessedFilename[256];
-	strcpy(preprocessedFilename, argv[1]);
+	strcpy(preprocessedFilename, inputFilename);
 	strncpy(preprocessedFilename + (strlen(preprocessedFilename) - 1), "i", 1);
 
 	char sourceFilename[256];
-	strcpy(sourceFilename, argv[1]);
+	strcpy(sourceFilename, inputFilename);
 	strncpy(sourceFilename + (strlen(sourceFilename) - 1), "s", 1);
 
 	char outFilename[256];
-	char* find = strchr(argv[1], '.');
+	char* find = strchr(inputFilename, '.');
 	assert(find != NULL);
-	size_t len = find - argv[1];
-	strncpy(outFilename, argv[1], len);
+	size_t len = find - inputFilename;
+	strncpy(outFilename, inputFilename, len);
 	outFilename[len] = '\0';
 
 	char commandline[2048] = "";
@@ -72,7 +120,7 @@ int main(int argc, const char * argv[]) {
 		perror("Error executing system command");
 		return EXIT_FAILURE;
 	}
-	const char* source = readFile(preprocessedFilename); //"return_2.c");
+	const char* source = readFile(preprocessedFilename);
 	initLexer(source);
 	const Token* tokens = scanTokens();
 	size_t tokenCount = arrlenu(tokens);
@@ -97,13 +145,18 @@ int main(int argc, const char * argv[]) {
 				printf("Token: %s\n", getTokenName(token.type));
 		}
 	}
-#if 1
+	if (bLex) {
+		return EXIT_SUCCESS;
+	}
+
 	const ProgramNode* cProgram = parseProgramTokens(tokens);
 	printProgram(cProgram);
-	
+	if (bParse) {
+		return EXIT_SUCCESS;
+	}
+
 	Program asmProgram;
 
-	Architecture arch = ARCH_X64; //*/ ARCH_ARM64;
 	switch (arch)
 	{
 		case ARCH_X64:
@@ -117,20 +170,20 @@ int main(int argc, const char * argv[]) {
 	}
 	
 	generateCode(&asmProgram, sourceFilename);
+	if (bCodegen) {
+		return EXIT_SUCCESS;
+	}
 //	printAsmProgram(&asmProgram);
 	
-	sprintf(commandline, "gcc %s -o %s", sourceFilename, outFilename);
+	const char* archString = getArchitectureName(arch);
+	
+	sprintf(commandline, "gcc -arch %s %s -o %s", archString, sourceFilename, outFilename);
 	res = system(commandline);
 	if (res == -1) {
 		perror("Error executing system command");
 		return EXIT_FAILURE;
 	}
-#endif
-	destroyLexer();
-	return 0;
-}
 
-/*
- 
-./test_compiler ../VectorC/bin/Debug/VectorC --chapter 1
-*/
+	destroyLexer();
+	return EXIT_SUCCESS;
+}
