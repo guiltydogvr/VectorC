@@ -307,13 +307,15 @@ Token scanToken(void) {
 		case '.':
 			return makeToken(TOKEN_DOT);
 		case '-':
-			return makeToken(TOKEN_MINUS);
+			return makeToken(match('-') ? TOKEN_DEC : TOKEN_MINUS);
 		case '+':
 			return makeToken(TOKEN_PLUS);
 		case '/':
 			return makeToken(TOKEN_SLASH);
 		case '*':
 			return makeToken(TOKEN_STAR);
+		case '~':
+			return makeToken(TOKEN_TILDE);
 		case '!':
 			return makeToken(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
 		case '=':
@@ -342,6 +344,7 @@ const char* getTokenName(TokenType tokenType)
 		[TOKEN_SEMICOLON] = "TOKEN_SEMICOLON",
 		[TOKEN_SLASH] = "TOKEN_SLASH",
 		[TOKEN_STAR] = "TOKEN_STAR",
+		[TOKEN_TILDE] = "TOKEN_TILDE",
 		[TOKEN_BANG] = "TOKEN_BANG",
 		[TOKEN_BANG_EQUAL] = "TOKEN_BANG_EQUAL",
 		[TOKEN_EQUAL] = "TOKEN_EQUAL",
@@ -350,6 +353,7 @@ const char* getTokenName(TokenType tokenType)
 		[TOKEN_GREATER_EQUAL] = "TOKEN_GREATER_EQUAL",
 		[TOKEN_LESS] = "TOKEN_LESS",
 		[TOKEN_LESS_EQUAL] = "TOKEN_LESS_EQUAL",
+		[TOKEN_DEC] = "TOKEN_DEC",
 		[TOKEN_IDENTIFIER] = "TOKEN_IDENTIFIER",
 		[TOKEN_STRING] = "TOKEN_STRING",
 		[TOKEN_NUMBER] = "TOKEN_NUMBER",
