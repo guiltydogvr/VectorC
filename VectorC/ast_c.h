@@ -18,8 +18,14 @@ typedef enum {
 } NodeType;
 
 typedef enum {
-	EXP_CONSTANT,
+	EXP_CONSTANT,  // Integer or double constant
+	EXP_UNARY      // Unary operation (e.g., ~x, -x)
 } ExpressionType;
+
+typedef enum {
+	UNARY_COMPLEMENT,  // Bitwise NOT (~x)
+	UNARY_NEGATE       // Negation (-x)
+} UnaryOperator;
 
 typedef enum {
 	STMT_RETURN,
@@ -53,18 +59,26 @@ typedef struct StatementNode {
 
 // Expression node
 typedef struct ExpressionNode {
-	ExpressionType type;             // Expression type (e.g., EXP_CONSTANT)
-	union {               			// Union for different value types
-		int intValue;
-		double doubleValue;
-		// Add more types here as needed
+	ExpressionType type;  // EXP_CONSTANT or EXP_UNARY
+	
+	union {
+		struct {                 // For unary expressions
+			UnaryOperator op;    // e.g., ~ or -
+			struct ExpressionNode* operand;
+		} unary;
+
+		struct {                 // For constant values
+			int intValue;
+			double doubleValue;
+		} constant;
 	} value;
 } ExpressionNode;
 
 ProgramNode* createProgramNode(FunctionNode* function);
 FunctionNode* createFunctionNode(const char* name, StatementNode* body);
 StatementNode* createReturnStatementNode(ExpressionNode* expr);
-ExpressionNode* createConstantNode(int value);
+ExpressionNode* createIntConstant(int value);
+ExpressionNode* createUnaryNode(UnaryOperator op, ExpressionNode* operand);
 
 void printProgram(const ProgramNode* program);
 

@@ -68,7 +68,7 @@ void translateReturnToX64(const StatementNode* stmt, X64Instruction** instructio
 		const ExpressionNode* expr = stmt->expr;
 
 		if (expr->type == EXP_CONSTANT) {
-			Operand src = createImmOperand(expr->value.intValue);
+			Operand src = createImmOperand(expr->value.constant.intValue);
 			Operand dst = createRegisterOperand("%eax"); // Return value in EAX for x64
 			(*instructions)[(*count)++] = (X64Instruction){X64_MOV, src, dst};
 			(*instructions)[(*count)++] = (X64Instruction){X64_RET};
@@ -83,7 +83,7 @@ void translateReturnToARM64(const StatementNode* stmt, ARM64Instruction** instru
 		const ExpressionNode* expr = stmt->expr;
 
 		if (expr->type == EXP_CONSTANT) {
-			Operand src = createImmOperand(expr->value.intValue);
+			Operand src = createImmOperand(expr->value.constant.intValue);
 			Operand dst = createRegisterOperand("x0"); // Return value in X0 for ARM64
 			(*instructions)[(*count)++] = (ARM64Instruction){ARM64_MOV, src, dst};
 			(*instructions)[(*count)++] = (ARM64Instruction){ARM64_RET};

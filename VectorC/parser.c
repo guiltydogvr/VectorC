@@ -31,11 +31,28 @@ static int match(Parser* parser, TokenType type) {
 }
 
 ExpressionNode* parseExpression(Parser* parser) {
-	if (match(parser, TOKEN_NUMBER)) {
-		const Token* token = &parser->tokens[parser->current - 1];
-		return createConstantNode(token->value.intValue);
+	if (match(parser, TOKEN_LEFT_PAREN)) {  // Handle grouped expressions
+		ExpressionNode* expr = parseExpression(parser);  // Parse inside parentheses
+		if (!match(parser, TOKEN_RIGHT_PAREN)) {  // Ensure closing `)`
+			printf("Error: Expected closing ')'\n");
+			exit(EXIT_FAILURE);
+		}
+		return expr;
 	}
-	printf("Error: Expected a number, got '%s'\n", currentToken(parser)->start);
+	else if (match(parser, TOKEN_TILDE)) {  // Bitwise NOT (~)
+		ExpressionNode* operand = parseExpression(parser);
+		return createUnaryNode(UNARY_COMPLEMENT, operand);
+	}
+	else if (match(parser, TOKEN_MINUS)) {  // Negation (-)
+		ExpressionNode* operand = parseExpression(parser);
+		return createUnaryNode(UNARY_NEGATE, operand);
+	}
+	else if (match(parser, TOKEN_NUMBER)) {  // Constant numbers
+		const Token* token = &parser->tokens[parser->current - 1];
+		return createIntConstant(token->value.intValue);
+	}
+
+	printf("Error: Expected a number or unary operator, got '%s'\n", currentToken(parser)->start);
 	exit(EXIT_FAILURE);
 }
 

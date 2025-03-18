@@ -30,27 +30,45 @@ StatementNode* createReturnStatementNode(ExpressionNode* expr) {
 	return node;
 }
 
-ExpressionNode* createConstantNode(int value) {
-	// Allocate memory for the constant expression node
-	ExpressionNode* node = (ExpressionNode*)malloc(sizeof(ExpressionNode));
-	if (!node) {
-		perror("Failed to allocate memory for ConstantNode");
-		exit(EXIT_FAILURE); // Exit if memory allocation fails
-	}
-
-	// Initialize the node as a constant expression
+ExpressionNode* createIntConstant(int value) {
+	ExpressionNode* node = malloc(sizeof(ExpressionNode));
 	node->type = EXP_CONSTANT;
-	node->value.intValue = value;
-
+	node->value.constant.intValue = value;
 	return node;
 }
 
-void printExpression(const ExpressionNode* expr) {
+ExpressionNode* createDoubleConstant(double value) {
+	ExpressionNode* node = malloc(sizeof(ExpressionNode));
+	node->type = EXP_CONSTANT;
+	node->value.constant.doubleValue = value;
+	return node;
+}
+
+ExpressionNode* createUnaryNode(UnaryOperator op, ExpressionNode* operand) {
+	ExpressionNode* node = malloc(sizeof(ExpressionNode));
+	node->type = EXP_UNARY;
+	node->value.unary.op = op;
+	node->value.unary.operand = operand;
+	return node;
+}
+
+void printExpression(const ExpressionNode* expr, int indent) {
 	if (!expr) return;
+
+	// Print indentation
+	for (int i = 0; i < indent; i++) {
+		printf("    "); // 4 spaces per indentation level
+	}
 
 	switch (expr->type) {
 		case EXP_CONSTANT:
-			printf("            Constant(%d)\n", expr->value.intValue);
+			printf("Constant(%d)\n", expr->value.constant.intValue);
+			break;
+
+		case EXP_UNARY:
+			printf("Unary(%s)\n",
+				expr->value.unary.op == UNARY_COMPLEMENT ? "~" : "-");
+			printExpression(expr->value.unary.operand, indent + 1);
 			break;
 	}
 }
@@ -61,7 +79,7 @@ void printStatement(const StatementNode* stmt) {
 	switch (stmt->type) {
 		case STMT_RETURN:
 			printf("Return(\n");
-			printExpression(stmt->expr);
+			printExpression(stmt->expr, 3);
 			printf("        )\n");
 			break;
 	}
@@ -111,23 +129,3 @@ void freeProgram(ProgramNode* program) {
 	freeFunction(program->function);
 	free(program);
 }
-
-/*
-int main() {
-	// Create the AST: program = Program(Function("main", Return(Constant(42))))
-	ExpressionNode* constant = createConstantNode(42);
-	StatementNode* returnStmt = createReturnStatementNode(constant);
-	FunctionNode* mainFunc = createFunctionNode("main", returnStmt);
-	ProgramNode* program = createProgramNode(mainFunc);
-
-	// Print the AST
-	printf("AST: ");
-	printProgram(program);
-	printf("\n");
-
-	// Clean up memory
-	freeProgram(program);
-
-	return 0;
-}
-*/
