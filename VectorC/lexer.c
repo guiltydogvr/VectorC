@@ -385,24 +385,21 @@ const Token* scanTokens(void)
 {
 	Token* tokens = NULL;
 
-	while (!isAtEnd()) {
+	for (;;) {
 		Token token = scanToken();
-		if (token.type != TOKEN_ERROR) {
-			arrput(tokens, token);
-		} else {
+		if (token.type == TOKEN_ERROR) {
 			int32_t len = token.length;
 			char keyword[len+1];
-
 			strncpy(keyword, token.start, token.length);
 			keyword[token.length] = '\0';
 			printf("Error: %s\n", keyword);
 			exit(EXIT_FAILURE);
 		}
-	}
+		arrput(tokens, token);
 
-	// ✅ Append `TOKEN_EOF` to the tokens list
-	Token eofToken = makeToken(TOKEN_EOF);
-	arrput(tokens, eofToken);
+		if (token.type == TOKEN_EOF) break;
+	}
 
 	return tokens;
 }
+
