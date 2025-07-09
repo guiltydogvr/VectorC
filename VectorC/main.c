@@ -11,6 +11,7 @@
 
 #include "lexer.h"
 #include "parser.h"
+#include "tacky.h"
 #include "translate.h"
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -161,6 +162,9 @@ int main(int argc, const char * argv[]) {
 		return EXIT_SUCCESS;
 	}
 
+	TackyProgram* tackyProgram = generateTackyFromAst(cProgram);
+	printTackyProgram(tackyProgram);
+	
 	Program asmProgram;
 
 	switch (arch)
