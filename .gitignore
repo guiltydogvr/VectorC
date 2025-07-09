@@ -45,3 +45,6 @@ bin/
 # Logs and Debug files
 *.log
 *.dSYM/
+
+tests/
+
