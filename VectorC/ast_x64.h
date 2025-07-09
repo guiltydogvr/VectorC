@@ -13,6 +13,8 @@
 // x64 instruction types
 typedef enum {
 	X64_MOV,
+	X64_NEG,
+	X64_NOT,
 	X64_RET,
 	// Add more x64-specific instructions
 } X64InstructionType;

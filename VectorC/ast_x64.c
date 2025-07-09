@@ -15,7 +15,7 @@ void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 			snprintf(buffer, bufferSize, "%d", op->immValue);
 			break;
 		case OPERAND_REGISTER:
-			snprintf(buffer, bufferSize, "%s", op->regName);
+			snprintf(buffer, bufferSize, "%%%s", op->regName);
 			break;
 	}
 }
@@ -30,6 +30,14 @@ void generateX64Code(const X64Instruction* instr) {
 			getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 			getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
 			printf("mov %s, %s\n", dstBuffer, srcBuffer);
+			break;
+		case X64_NEG:
+			getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+			printf("neg %s\n", srcBuffer);
+			break;
+		case X64_NOT:
+			getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+			printf("not %s\n", srcBuffer);
 			break;
 		case X64_RET:
 			printf("ret\n");
@@ -72,7 +80,12 @@ void generateX64Function(FILE* outputFile, const Function* func)
 				// Example: move immediate into a register or memory
 				fprintf(outputFile, "    movl $%s, %s\n", srcBuffer, dstBuffer);
 				break;
-
+			case X64_NEG:
+				fprintf(outputFile, "    neg %s\n", srcBuffer);
+				break;
+			case X64_NOT:
+				fprintf(outputFile, "    not %s\n", srcBuffer);
+				break;
 			case X64_RET:
 				// X86-64 epilogue
 				fprintf(outputFile, "    movq %%rbp, %%rsp\n");
@@ -97,6 +110,14 @@ void printX64Function(const Function* function) {
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
 				printf("  mov %s, %s\n", dstBuffer, srcBuffer);
+				break;
+			case X64_NEG:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				printf("  neg %s\n", srcBuffer);
+				break;
+			case X64_NOT:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				printf("  not %s\n", srcBuffer);
 				break;
 			case X64_RET:
 				printf("  ret\n");

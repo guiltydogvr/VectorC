@@ -13,6 +13,8 @@
 #include "parser.h"
 #include "tacky.h"
 #include "translate.h"
+#include "translate_tacky_x64.h"
+
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
@@ -170,7 +172,8 @@ int main(int argc, const char * argv[]) {
 	switch (arch)
 	{
 		case ARCH_X64:
-			translateProgramToX64(cProgram, &asmProgram);
+//			translateProgramToX64(cProgram, &asmProgram);
+			translateTackyToX64(tackyProgram, &asmProgram);
 			break;
 		case ARCH_ARM64:
 			translateProgramToARM64(cProgram, &asmProgram);
@@ -183,7 +186,7 @@ int main(int argc, const char * argv[]) {
 	if (bCodegen) {
 		return EXIT_SUCCESS;
 	}
-//	printAsmProgram(&asmProgram);
+	printAsmProgram(&asmProgram);
 	
 	const char* archString = getArchitectureName(arch);
 	
