@@ -43,7 +43,7 @@ static char* readFile(const char * path) {
 
 int main(int argc, const char * argv[]) {
 	// insert code here...
-	bool bLex = false, bParse = false, bCodegen = false;
+	bool bLex = false, bParse = false, bCodegen = false, bVerbose = false;
 	Architecture arch = ARCH_X64;
 
 	// The source filename (if any)
@@ -77,6 +77,9 @@ int main(int argc, const char * argv[]) {
 				fprintf(stderr, "Error: Unknown architecture '%s'\n", archValue);
 				return 1;
 			}
+		}
+		else if (strcmp(argv[i], "-v") == 0) {
+			bVerbose = true;
 		}
 		// Otherwise, we treat it as the source filename (or error if we already have one).
 		else {
@@ -114,7 +117,10 @@ int main(int argc, const char * argv[]) {
 	outFilename[len] = '\0';
 
 	char commandline[2048] = "";
-	sprintf(commandline, "gcc -E -P %s -o %s", argv[1], preprocessedFilename);
+	sprintf(commandline, "gcc -E -P %s -o %s", inputFilename, preprocessedFilename);
+	if (bVerbose) {
+		printf("Running: %s\n", commandline);
+	}
 	int32_t res = system(commandline);
 	if (res == -1) {
 		perror("Error executing system command");
@@ -178,6 +184,9 @@ int main(int argc, const char * argv[]) {
 	const char* archString = getArchitectureName(arch);
 	
 	sprintf(commandline, "gcc -arch %s %s -o %s", archString, sourceFilename, outFilename);
+	if (bVerbose) {
+		printf("Running: %s\n", commandline);
+	}
 	res = system(commandline);
 	if (res == -1) {
 		perror("Error executing system command");
