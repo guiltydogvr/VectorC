@@ -30,6 +30,12 @@ void generateARM64Code(const ARM64Instruction* instr) {
 		case ARM64_MOV:
 			printf("mov %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
 			break;
+		case ARM64_NEG:
+			printf("neg %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+			break;
+		case ARM64_NOT:
+			printf("mvn %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+			break;
 		case ARM64_RET:
 			printf("ret\n");
 			break;
@@ -72,7 +78,12 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 				// In your code, you might parse it into srcBuffer= #100, dstBuffer= x0
 				fprintf(outputFile, "    mov %s, %s\n", dstBuffer, srcBuffer);
 				break;
-
+			case ARM64_NEG:
+				fprintf(outputFile, "    neg %s, %s\n", dstBuffer, srcBuffer);
+				break;
+			case ARM64_NOT:
+				fprintf(outputFile, "    mvn %s, %s\n", dstBuffer, srcBuffer);
+				break;
 			case ARM64_RET:
 				// ARM64 epilogue
 				fprintf(outputFile, "    ldp x29, x30, [sp], #16\n");
@@ -95,6 +106,12 @@ void printARM64Function(const Function* function)
 		switch (instr->type) {
 			case ARM64_MOV:
 				printf("  mov %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+				break;
+			case ARM64_NEG:
+				printf("  neg %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+				break;
+			case ARM64_NOT:
+				printf("  mvn %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
 				break;
 			case ARM64_RET:
 				printf("  ret\n");
