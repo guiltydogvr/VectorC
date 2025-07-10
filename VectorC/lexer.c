@@ -234,28 +234,17 @@ static Token identifier(void) {
 	return makeToken(identifierType());
 }
 
-static Token number(char firstChar) {
-	int value = atoi(&firstChar);
-	while (isDigit(peek())) {
-		char ch = peek();
-		value = value * 10 + atoi(&ch);
-		advance();
-	}
-	
-	// Look for a fractional part.
-	if (peek() == '.' && isDigit(peekNext())) {
-		// Consume the ".".
-		advance();
-		
-		while (isDigit(peek())) {
-			advance();
-		}
-	} else {
-		if (isAlpha(peekNext())) {
-			return errorToken("Invalid Identifier");
-		}
-	}
-	
+static Token number(void) {
+	const char* start = lexer.start;
+
+	while (isDigit(peek())) advance();
+
+	int len = (int)(lexer.current - start);
+	char numStr[len + 1];
+	strncpy(numStr, start, len);
+	numStr[len] = '\0';
+
+	int value = atoi(numStr);
 	return makeNumberToken(TOKEN_NUMBER, value);
 }
 
@@ -289,7 +278,7 @@ Token scanToken(void) {
 		return identifier();
 	}
 	if (isDigit(c)) {
-		return number(c);
+		return number();
 	}
 	switch(c) {
 		case '(':
