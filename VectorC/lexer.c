@@ -239,6 +239,11 @@ static Token number(void) {
 
 	while (isDigit(peek())) advance();
 
+	// 🚩 New check here
+	if (isAlpha(peek())) {
+		return errorToken("Invalid identifier: cannot start with a digit.");
+	}
+
 	int len = (int)(lexer.current - start);
 	char numStr[len + 1];
 	strncpy(numStr, start, len);
@@ -305,6 +310,8 @@ Token scanToken(void) {
 			return makeToken(TOKEN_STAR);
 		case '~':
 			return makeToken(TOKEN_TILDE);
+		case '%':
+			return makeToken(TOKEN_MOD);
 		case '!':
 			return makeToken(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
 		case '=':
