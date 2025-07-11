@@ -47,7 +47,7 @@ static char* readFile(const char * path) {
 
 int main(int argc, const char * argv[]) {
 	// insert code here...
-	bool bLex = false, bParse = false, bCodegen = false, bVerbose = false;
+	bool bLex = false, bParse = false, bTacky = false, bCodegen = false, bVerbose = false;
 	Architecture arch = ARCH_X64;
 
 	// The source filename (if any)
@@ -65,11 +65,15 @@ int main(int argc, const char * argv[]) {
 		else if (strcmp(argv[i], "--parse") == 0) {
 			bParse = true;
 		}
-		// 3) --codegen
+		// 3) --tacky
+		else if (strcmp(argv[i], "--tacky") == 0) {
+			bTacky = true;
+		}
+		// 4) --codegen
 		else if (strcmp(argv[i], "--codegen") == 0) {
 			bCodegen = true;
 		}
-		// 4) -arch=???
+		// 5) -arch=???
 		else if (strncmp(argv[i], "-arch=", 6) == 0) {
 			const char* archValue = argv[i] + 6; // the part after '-arch='
 			
@@ -82,6 +86,7 @@ int main(int argc, const char * argv[]) {
 				return 1;
 			}
 		}
+		// 6) -v
 		else if (strcmp(argv[i], "-v") == 0) {
 			bVerbose = true;
 		}
@@ -167,7 +172,10 @@ int main(int argc, const char * argv[]) {
 
 	TackyProgram* tackyProgram = generateTackyFromAst(cProgram);
 	printTackyProgram(tackyProgram);
-	
+	if (bTacky) {
+		return EXIT_SUCCESS;
+	}
+
 	Program asmProgram = { 0 };
 
 	switch (arch)
