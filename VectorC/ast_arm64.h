@@ -15,8 +15,7 @@ typedef enum {
 	ARM64_MOV,
 	ARM64_NEG,
 	ARM64_NOT,
-	ARM64_RET,
-	// Add more ARM64-specific instructions
+	ARM64_RET
 } ARM64InstructionType;
 
 // ARM64 instruction structure

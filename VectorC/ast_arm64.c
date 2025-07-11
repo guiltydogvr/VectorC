@@ -14,6 +14,9 @@ const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize) 
 		case OPERAND_IMM:
 			snprintf(buffer, bufferSize, "#%d", op->immValue);
 			break;
+		case OPERAND_STACK_SLOT:
+			snprintf(buffer, bufferSize, "[fp, -%d]", op->stackOffset);
+			break;
 		case OPERAND_REGISTER:
 			snprintf(buffer, bufferSize, "%s", op->regName);
 			break;
@@ -28,7 +31,15 @@ void generateARM64Code(const ARM64Instruction* instr) {
 
 	switch (instr->type) {
 		case ARM64_MOV:
-			printf("mov %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+			if (instr->src.type == OPERAND_REGISTER && instr->dst.type == OPERAND_STACK_SLOT) {
+				printf("str %s, %s\n", srcBuffer, dstBuffer);
+			} else if (instr->src.type == OPERAND_STACK_SLOT && instr->dst.type == OPERAND_REGISTER) {
+				printf("ldr %s, %s\n", dstBuffer, srcBuffer);
+			} else if (instr->src.type == OPERAND_IMM) {
+				printf("mov %s, #%d\n", dstBuffer, instr->src.immValue);
+			} else {
+				printf("mov %s, %s\n", dstBuffer, srcBuffer);
+			}
 			break;
 		case ARM64_NEG:
 			printf("neg %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
@@ -76,7 +87,15 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 			case ARM64_MOV:
 				// Example: mov x0, #100 => "mov x0, #100"
 				// In your code, you might parse it into srcBuffer= #100, dstBuffer= x0
-				fprintf(outputFile, "    mov %s, %s\n", dstBuffer, srcBuffer);
+				if (instr->src.type == OPERAND_REGISTER && instr->dst.type == OPERAND_STACK_SLOT) {
+					fprintf(outputFile, "    str %s, %s\n", srcBuffer, dstBuffer);
+				} else if (instr->src.type == OPERAND_STACK_SLOT && instr->dst.type == OPERAND_REGISTER) {
+					fprintf(outputFile, "    ldr %s, %s\n", dstBuffer, srcBuffer);
+				} else if (instr->src.type == OPERAND_IMM) {
+					fprintf(outputFile, "    mov %s, #%d\n", dstBuffer, instr->src.immValue);
+				} else {
+					fprintf(outputFile, "    mov %s, %s\n", dstBuffer, srcBuffer);
+				}
 				break;
 			case ARM64_NEG:
 				fprintf(outputFile, "    neg %s, %s\n", dstBuffer, srcBuffer);
@@ -105,7 +124,15 @@ void printARM64Function(const Function* function)
 		const ARM64Instruction* instr = &instructions[i];
 		switch (instr->type) {
 			case ARM64_MOV:
-				printf("  mov %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+				if (instr->src.type == OPERAND_REGISTER && instr->dst.type == OPERAND_STACK_SLOT) {
+					printf("  str %s, %s\n", getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)), getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)));
+				} else if (instr->src.type == OPERAND_STACK_SLOT && instr->dst.type == OPERAND_REGISTER) {
+					printf("  ldr %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+				} else if (instr->src.type == OPERAND_IMM) {
+					printf("  mov %s, #%d\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), instr->src.immValue);
+				} else {
+					printf("  mov %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
+				}
 				break;
 			case ARM64_NEG:
 				printf("  neg %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));

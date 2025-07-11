@@ -39,14 +39,15 @@ Program createProgram(Function* functions, size_t functionCount);
 // Operand types (shared across architectures)
 typedef enum {
 	OPERAND_IMM,
-	OPERAND_REGISTER,
+	OPERAND_STACK_SLOT,
+	OPERAND_REGISTER
 } OperandType;
 
-// Operand structure
-typedef struct Operand {
+typedef struct {
 	OperandType type;
 	union {
 		int immValue;        // Immediate value
+		int stackOffset;
 		const char* regName; // Register name
 	};
 } Operand;

@@ -168,7 +168,7 @@ int main(int argc, const char * argv[]) {
 	TackyProgram* tackyProgram = generateTackyFromAst(cProgram);
 	printTackyProgram(tackyProgram);
 	
-	Program asmProgram;
+	Program asmProgram = { 0 };
 
 	switch (arch)
 	{
