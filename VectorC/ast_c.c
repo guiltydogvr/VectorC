@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "ast_c.h"
+#include "token.h"
 
 ProgramNode* createProgramNode(FunctionNode* function) {
 	ProgramNode* node = (ProgramNode*)malloc(sizeof(ProgramNode));
@@ -52,6 +53,15 @@ ExpressionNode* createUnaryNode(UnaryOperator op, ExpressionNode* operand) {
 	return node;
 }
 
+ExpressionNode* createBinaryNode(BinaryOperator op, ExpressionNode* left, ExpressionNode* right) {
+	ExpressionNode* node = malloc(sizeof(ExpressionNode));
+	node->type = EXP_BINARY;
+	node->value.binary.op = op;
+	node->value.binary.left = left;
+	node->value.binary.right = right;
+	return node;
+}
+
 void printExpression(const ExpressionNode* expr, int indent) {
 	if (!expr) return;
 
@@ -70,6 +80,33 @@ void printExpression(const ExpressionNode* expr, int indent) {
 				expr->value.unary.op == UNARY_COMPLEMENT ? "~" : "-");
 			printExpression(expr->value.unary.operand, indent + 1);
 			break;
+		case EXP_BINARY: {
+			const char* opStr;
+			switch (expr->value.binary.op) {
+				case BINOP_ADD:
+					opStr = "+";
+					break;
+				case BINOP_SUBTRACT:
+					opStr = "-";
+					break;
+				case BINOP_MULTIPLY:
+					opStr = "*";
+					break;
+				case BINOP_DIVIDE:
+					opStr = "/";
+					break;
+				case BINOP_MODULO:
+					opStr = "%";
+					break;
+				default:
+					opStr = "?";
+					break;
+			}
+			printf("Binary(%s)\n", opStr);
+			printExpression(expr->value.binary.left, indent + 1);
+			printExpression(expr->value.binary.right, indent + 1);
+			break;
+		}
 	}
 }
 

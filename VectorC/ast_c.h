@@ -18,14 +18,23 @@ typedef enum {
 } NodeType;
 
 typedef enum {
-	EXP_CONSTANT,  // Integer or double constant
-	EXP_UNARY      // Unary operation (e.g., ~x, -x)
+	EXP_CONSTANT,	// Integer or double constant
+	EXP_UNARY,		// Unary operation (e.g., ~x, -x)
+	EXP_BINARY,		// Bunary operation (e.g. 1 + 2)
 } ExpressionType;
 
 typedef enum {
 	UNARY_COMPLEMENT,  // Bitwise NOT (~x)
 	UNARY_NEGATE       // Negation (-x)
 } UnaryOperator;
+
+typedef enum {
+	BINOP_ADD,		// +
+	BINOP_SUBTRACT, // -
+	BINOP_MULTIPLY, // *
+	BINOP_DIVIDE,   // /
+	BINOP_MODULO    // %
+} BinaryOperator;
 
 typedef enum {
 	STMT_RETURN,
@@ -57,20 +66,23 @@ typedef struct StatementNode {
 	};
 } StatementNode;
 
-// Expression node
 typedef struct ExpressionNode {
-	ExpressionType type;  // EXP_CONSTANT or EXP_UNARY
-	
+	ExpressionType type;
+
 	union {
-		struct {                 // For unary expressions
-			UnaryOperator op;    // e.g., ~ or -
+		struct {
+			UnaryOperator op;
 			struct ExpressionNode* operand;
 		} unary;
-
-		struct {                 // For constant values
+		struct {
 			int intValue;
 			double doubleValue;
 		} constant;
+		struct {
+			BinaryOperator op;
+			struct ExpressionNode* left;
+			struct ExpressionNode* right;
+		} binary;
 	} value;
 } ExpressionNode;
 
@@ -79,6 +91,7 @@ FunctionNode* createFunctionNode(const char* name, StatementNode* body);
 StatementNode* createReturnStatementNode(ExpressionNode* expr);
 ExpressionNode* createIntConstant(int value);
 ExpressionNode* createUnaryNode(UnaryOperator op, ExpressionNode* operand);
+ExpressionNode* createBinaryNode(BinaryOperator op, ExpressionNode* left, ExpressionNode* right);
 
 void printProgram(const ProgramNode* program);
 

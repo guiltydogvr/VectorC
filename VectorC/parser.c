@@ -30,9 +30,86 @@ static int match(Parser* parser, TokenType type) {
 	return 0;
 }
 
-ExpressionNode* parseExpression(Parser* parser) {
+static int getPrecedence(TokenType type) {
+	switch (type) {
+		case TOKEN_STAR:
+		case TOKEN_SLASH:
+		case TOKEN_MOD:
+			return 10;
+		case TOKEN_PLUS:
+		case TOKEN_MINUS:
+			return 5;
+		default:
+			return 0;
+	}
+}
+
+static int isBinaryOperator(TokenType type) {
+	return getPrecedence(type) > 0;
+}
+
+ExpressionNode* parseExpression(Parser* parser, int minPrec) {
+	ExpressionNode* left = NULL;
+
+	// Parse factor or unary
+	if (match(parser, TOKEN_LEFT_PAREN)) {
+		left = parseExpression(parser, 0);
+		if (!match(parser, TOKEN_RIGHT_PAREN)) {
+			printf("Error: Expected ')'\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+	else if (match(parser, TOKEN_TILDE)) {
+		left = createUnaryNode(UNARY_COMPLEMENT, parseExpression(parser, 100));
+	}
+	else if (match(parser, TOKEN_MINUS)) {
+		left = createUnaryNode(UNARY_NEGATE, parseExpression(parser, 100));
+	}
+	else if (match(parser, TOKEN_NUMBER)) {
+		const Token* previousToken = &parser->tokens[parser->current - 1];
+		left = createIntConstant(previousToken->value.intValue);
+	}
+	else {
+		printf("Error: ...");
+		exit(EXIT_FAILURE);
+	}
+
+	// Parse binary ops using precedence climbing
+	while (isBinaryOperator(currentToken(parser)->type) &&
+		   getPrecedence(currentToken(parser)->type) >= minPrec) {
+
+		BinaryOperator op;
+		switch (currentToken(parser)->type) {
+			case TOKEN_PLUS:
+				op = BINOP_ADD;
+				break;
+			case TOKEN_MINUS:
+				op = BINOP_SUBTRACT;
+				break;
+			case TOKEN_STAR:
+				op = BINOP_MULTIPLY;
+				break;
+			case TOKEN_SLASH:
+				op = BINOP_DIVIDE;
+				break;
+			case TOKEN_MOD:
+				op = BINOP_MODULO;
+				break;
+			default:
+				printf("Unknown binary operator\n");
+				exit(EXIT_FAILURE);
+		}
+		advance(parser);
+		ExpressionNode* right = parseExpression(parser, getPrecedence(currentToken(parser)->type) + 1);
+		left = createBinaryNode(op, left, right);
+	}
+
+	return left;
+}
+
+ExpressionNode* parseFactor(Parser* parser) {
 	if (match(parser, TOKEN_LEFT_PAREN)) {  // Handle grouped expressions
-		ExpressionNode* expr = parseExpression(parser);  // Parse inside parentheses
+		ExpressionNode* expr = parseExpression(parser, 0);  // Parse inside parentheses
 		if (!match(parser, TOKEN_RIGHT_PAREN)) {  // Ensure closing `)`
 			printf("Error: Expected closing ')'\n");
 			exit(EXIT_FAILURE);
@@ -40,11 +117,11 @@ ExpressionNode* parseExpression(Parser* parser) {
 		return expr;
 	}
 	else if (match(parser, TOKEN_TILDE)) {  // Bitwise NOT (~)
-		ExpressionNode* operand = parseExpression(parser);
+		ExpressionNode* operand = parseFactor(parser);
 		return createUnaryNode(UNARY_COMPLEMENT, operand);
 	}
 	else if (match(parser, TOKEN_MINUS)) {  // Negation (-)
-		ExpressionNode* operand = parseExpression(parser);
+		ExpressionNode* operand = parseFactor(parser);
 		return createUnaryNode(UNARY_NEGATE, operand);
 	}
 	else if (match(parser, TOKEN_NUMBER)) {  // Constant numbers
@@ -58,7 +135,7 @@ ExpressionNode* parseExpression(Parser* parser) {
 
 StatementNode* parseStatement(Parser* parser) {
 	if (match(parser, TOKEN_RETURN)) {
-		ExpressionNode* expr = parseExpression(parser);
+		ExpressionNode* expr = parseExpression(parser, 0);
 		if (!match(parser, TOKEN_SEMICOLON)) {
 			printf("Error: Expected ';' after return expression.\n");
 			exit(EXIT_FAILURE);

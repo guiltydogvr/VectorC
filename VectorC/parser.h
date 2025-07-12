@@ -17,7 +17,8 @@ typedef struct {
 	size_t current; // Current token index
 } Parser;
 
-ExpressionNode* parseExpression(Parser* parser);
+ExpressionNode* parseExpression(Parser* parser, int minPrec);
+ExpressionNode* parseFactor(Parser* parser);
 StatementNode* parseStatement(Parser* parser);
 FunctionNode* parseFunction(Parser* parser);
 ProgramNode* parseProgram(Parser* parser);
