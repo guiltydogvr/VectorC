@@ -28,7 +28,6 @@ typedef struct X64Instruction {
 
 // Function declarations for x64 code generation
 void getX64Operand(const Operand* op, char* buffer, size_t bufferSize);
-void generateX64Code(const X64Instruction* instr);
 void generateX64Function(FILE* outputFile, const Function* func);
 void printX64Function(const Function* function);
 

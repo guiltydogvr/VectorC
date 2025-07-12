@@ -24,35 +24,6 @@ const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize) 
 	return buffer;
 }
 
-// Generate ARM64 code for an instruction
-void generateARM64Code(const ARM64Instruction* instr) {
-	char srcBuffer[32];
-	char dstBuffer[32];
-
-	switch (instr->type) {
-		case ARM64_MOV:
-			if (instr->src.type == OPERAND_REGISTER && instr->dst.type == OPERAND_STACK_SLOT) {
-				printf("str %s, %s\n", srcBuffer, dstBuffer);
-			} else if (instr->src.type == OPERAND_STACK_SLOT && instr->dst.type == OPERAND_REGISTER) {
-				printf("ldr %s, %s\n", dstBuffer, srcBuffer);
-			} else if (instr->src.type == OPERAND_IMM) {
-				printf("mov %s, #%d\n", dstBuffer, instr->src.immValue);
-			} else {
-				printf("mov %s, %s\n", dstBuffer, srcBuffer);
-			}
-			break;
-		case ARM64_NEG:
-			printf("neg %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
-			break;
-		case ARM64_NOT:
-			printf("mvn %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
-			break;
-		case ARM64_RET:
-			printf("ret\n");
-			break;
-	}
-}
-
 //---------------------------------------------------------
 // ARM64 CODEGEN
 //---------------------------------------------------------

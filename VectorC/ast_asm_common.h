@@ -32,10 +32,6 @@ typedef struct Program {
 	size_t functionCount; 		// Number of functions
 } Program;
 
-// Shared constructor functions
-Function createFunction(const char* name, void* instructions, size_t instructionCount, Architecture arch);
-Program createProgram(Function* functions, size_t functionCount);
-
 // Operand types (shared across architectures)
 typedef enum {
 	OPERAND_IMM,
@@ -53,11 +49,6 @@ typedef struct {
 } Operand;
 
 const char* getArchitectureName(Architecture arch);
-
-// Helper functions for operands
-Operand createImmOperand(int value);
-Operand createRegisterOperand(const char* regName);
-
 void generateCode(const Program* program, const char* outputFilename);
 void printAsmProgram(const Program* program);
 

@@ -23,31 +23,6 @@ void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 	}
 }
 
-// Generate x64 code for an instruction
-void generateX64Code(const X64Instruction* instr) {
-	char srcBuffer[32];
-	char dstBuffer[32];
-	
-	switch (instr->type) {
-		case X64_MOV:
-			getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-			getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
-			printf("mov %s, %s\n", dstBuffer, srcBuffer);
-			break;
-		case X64_NEG:
-			getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-			printf("neg %s\n", srcBuffer);
-			break;
-		case X64_NOT:
-			getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-			printf("not %s\n", srcBuffer);
-			break;
-		case X64_RET:
-			printf("ret\n");
-			break;
-	}
-}
-
 //---------------------------------------------------------
 // X64 CODEGEN
 //---------------------------------------------------------
