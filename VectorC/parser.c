@@ -99,11 +99,11 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 				printf("Unknown binary operator\n");
 				exit(EXIT_FAILURE);
 		}
+		int prec = getPrecedence(currentToken(parser)->type);
 		advance(parser);
-		ExpressionNode* right = parseExpression(parser, getPrecedence(currentToken(parser)->type) + 1);
+		ExpressionNode* right = parseExpression(parser, prec + 1);
 		left = createBinaryNode(op, left, right);
 	}
-
 	return left;
 }
 

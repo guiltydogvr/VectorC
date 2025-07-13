@@ -22,6 +22,14 @@ typedef enum {
 } TackyUnaryOperator;
 
 typedef enum {
+	TACKY_ADD,
+	TACKY_SUBTRACT,
+	TACKY_MULTIPLY,
+	TACKY_DIVIDE,
+	TACKY_MODULO
+} TackyBinaryOperator;
+
+typedef enum {
     TACKY_VAL_CONSTANT,
     TACKY_VAL_VAR
 } TackyValueType;
@@ -44,7 +52,8 @@ typedef struct {
 
 typedef enum {
     TACKY_INSTR_RETURN,
-    TACKY_INSTR_UNARY
+    TACKY_INSTR_UNARY,
+	TACKY_INSTR_BINARY,
 } TackyInstructionType;
 
 typedef struct {
@@ -60,6 +69,12 @@ typedef struct {
             TackyValue src;
             TackyValue dst;
         } unary;
+		struct {
+			TackyBinaryOperator op;
+			TackyValue dst;
+			TackyValue lhs;
+			TackyValue rhs;
+		} binary;
     };
 } TackyInstruction;
 

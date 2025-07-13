@@ -46,6 +46,48 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 
 		return dst;
 	}
+	else if (expr->type == EXP_BINARY) {
+		TackyValue lhs = translateExpression(expr->value.binary.left, func);
+		TackyValue rhs = translateExpression(expr->value.binary.right, func);
+
+		const char* dstName = newTempVarName();
+		TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
+
+		TackyBinaryOperator op;
+		switch (expr->value.binary.op) {
+			case BINOP_ADD:
+				op = TACKY_ADD;
+				break;
+			case BINOP_SUBTRACT:
+				op = TACKY_SUBTRACT;
+				break;
+			case BINOP_MULTIPLY:
+				op = TACKY_MULTIPLY;
+				break;
+			case BINOP_DIVIDE:
+				op = TACKY_DIVIDE;
+				break;
+			case BINOP_MODULO:
+				op = TACKY_MODULO;
+				break;
+			default:
+				fprintf(stderr, "Unknown binary operator in TACKY generation\n");
+				exit(EXIT_FAILURE);
+		}
+
+		TackyInstruction instr = {
+			.type = TACKY_INSTR_BINARY,
+			.binary = {
+				.op = op,
+				.lhs = lhs,
+				.rhs = rhs,
+				.dst = dst
+			}
+		};
+		arrput(func->instructions, instr);
+
+		return dst;
+	}
 	else {
 		fprintf(stderr, "Unsupported expression type in TACKY generation\n");
 		exit(EXIT_FAILURE);
@@ -114,6 +156,41 @@ void printTackyProgram(const TackyProgram* program) {
 						printf("%s, ", instr->unary.src.varName);
 					printf("%s)\n", instr->unary.dst.varName);
 					break;
+
+				case TACKY_INSTR_BINARY:
+				{
+					char* opString = NULL;
+					switch (instr->binary.op)
+					{
+						case TACKY_ADD:
+							opString = "Add";
+							break;
+						case TACKY_SUBTRACT:
+							opString = "Subtrack";
+							break;
+						case TACKY_MULTIPLY:
+							opString = "Multiply";
+							break;
+						case TACKY_DIVIDE:
+							opString = "Divide";
+							break;
+						case TACKY_MODULO:
+							opString = "Modulo";
+							break;
+					}
+					printf("        Binary(%s, ", opString);
+					if (instr->binary.lhs.type == TACKY_VAL_CONSTANT)
+						printf("%d, ", instr->binary.lhs.constantValue);
+					else
+						printf("%s, ", instr->binary.lhs.varName);
+					if (instr->binary.rhs.type == TACKY_VAL_CONSTANT)
+						printf("%d, ", instr->binary.rhs.constantValue);
+					else
+						printf("%s, ", instr->binary.rhs.varName);
+					printf("%s)\n", instr->binary.dst.varName);
+					break;
+				}
+
 			}
 		}
 		printf("    )\n");
