@@ -18,7 +18,7 @@ void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 			snprintf(buffer, bufferSize, "%s", op->varName);
 			break;
 		case OPERAND_STACK_SLOT:
-			snprintf(buffer, bufferSize, "-%d(%%rbp)", op->stackOffset);
+			snprintf(buffer, bufferSize, "%d(%%rbp)", op->stackOffset);
 			break;
 		case OPERAND_REGISTER:
 			snprintf(buffer, bufferSize, "%s", op->regName);
@@ -93,14 +93,15 @@ void generateX64Function(FILE* outputFile, const Function* func)
 	fprintf(outputFile, "\n"); // Blank line between functions
 }
 
+/*
 void emitX64(X64InstructionType op, Operand src, Operand dst) {
 	if (op == X64_MOV) {
 		if (src.type == OPERAND_IMM && dst.type == OPERAND_REGISTER) {
 			printf("    mov $%d, %s\n", src.immValue, dst.regName);
 		} else if (src.type == OPERAND_STACK_SLOT && dst.type == OPERAND_REGISTER) {
-			printf("    mov -%d(%%rbp), %s\n", src.stackOffset, dst.regName);
+			printf("    mov %d(%%rbp), %s\n", src.stackOffset, dst.regName);
 		} else if (src.type == OPERAND_REGISTER && dst.type == OPERAND_STACK_SLOT) {
-			printf("    mov %s, -%d(%%rbp)\n", src.regName, dst.stackOffset);
+			printf("    mov %s, %d(%%rbp)\n", src.regName, dst.stackOffset);
 		} else if (src.type == OPERAND_REGISTER && dst.type == OPERAND_REGISTER) {
 			printf("    mov %s, %s\n", src.regName, dst.regName);
 		}
@@ -111,6 +112,7 @@ void emitX64(X64InstructionType op, Operand src, Operand dst) {
 	}
 	// etc...
 }
+*/
 
 void printX64Function(const Function* function) {
 	const X64Instruction* instructions = (const X64Instruction*)function->instructions;

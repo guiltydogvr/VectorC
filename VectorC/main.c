@@ -181,6 +181,8 @@ int main(int argc, const char * argv[]) {
 	{
 		case ARCH_X64:
 			translateTackyToX64(tackyProgram, &asmProgram);
+			printAsmProgram(&asmProgram);
+			replacePseudoRegistersX64(tackyProgram, &asmProgram);
 			break;
 		case ARCH_ARM64:
 			translateTackyToARM64(tackyProgram, &asmProgram);

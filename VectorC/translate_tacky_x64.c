@@ -221,3 +221,47 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 #undef VAR
 	}
 }
+
+static int nextOffset = -4; // global or passed in
+
+static int getOrAssignStackOffset(const char* tmpName) {
+	for (int i = 0; i < arrlenu(tmpMappings); i++) {
+		if (strcmp(tmpMappings[i].tmpName, tmpName) == 0) {
+			return tmpMappings[i].stackOffset;
+		}
+	}
+	// New tmp — assign a new slot
+	arrput(tmpMappings, ((TmpMapping){
+		.tmpName = strdup(tmpName),
+		.stackOffset = nextOffset
+	}));
+	int assigned = nextOffset;
+	nextOffset -= 4; // Move down the stack
+	return assigned;
+}
+
+void replacePseudoRegistersX64(const TackyProgram* tackyProgram, Program* asmProgram) {
+#define SLOT(offset) ((Operand){ .type = OPERAND_STACK_SLOT, .stackOffset = offset })
+	for (size_t iFunc = 0; iFunc < asmProgram->functionCount; iFunc++) {
+		const Function* func = &asmProgram->functions[iFunc];
+
+		const X64Instruction* instructions = (const X64Instruction*)func->instructions;
+//		char srcBuffer[32];
+//		char dstBuffer[32];
+
+		for (size_t i = 0; i < func->instructionCount; i++) {
+			X64Instruction* instr = (X64Instruction*)&instructions[i];
+			
+			if (instr->src.type == OPERAND_VARNAME) {
+				int offset = getOrAssignStackOffset(instr->src.varName);
+				instr->src = SLOT(offset);
+			}
+
+			if (instr->dst.type == OPERAND_VARNAME) {
+				int offset = getOrAssignStackOffset(instr->dst.varName);
+				instr->dst = SLOT(offset);
+			}
+		}
+	}
+#undef SLOT
+}
