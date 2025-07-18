@@ -188,12 +188,12 @@ int main(int argc, const char * argv[]) {
 		default:
 			printf("Unsupported architecture`n");
 	}
-	
+	printAsmProgram(&asmProgram);
+
 	generateCode(&asmProgram, sourceFilename);
 	if (bCodegen) {
 		return EXIT_SUCCESS;
 	}
-	printAsmProgram(&asmProgram);
 	
 	const char* archString = getArchitectureName(arch);
 	

@@ -14,6 +14,9 @@ const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize) 
 		case OPERAND_IMM:
 			snprintf(buffer, bufferSize, "#%d", op->immValue);
 			break;
+		case OPERAND_VARNAME:
+			snprintf(buffer, bufferSize, "%s", op->varName);
+			break;
 		case OPERAND_STACK_SLOT:
 			snprintf(buffer, bufferSize, "[fp, -%d]", op->stackOffset);
 			break;

@@ -14,6 +14,9 @@ void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 		case OPERAND_IMM:
 			snprintf(buffer, bufferSize, "$%d", op->immValue);
 			break;
+		case OPERAND_VARNAME:
+			snprintf(buffer, bufferSize, "%s", op->varName);
+			break;
 		case OPERAND_STACK_SLOT:
 			snprintf(buffer, bufferSize, "-%d(%%rbp)", op->stackOffset);
 			break;
@@ -54,6 +57,17 @@ void generateX64Function(FILE* outputFile, const Function* func)
 		getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
 
 		switch (instr->type) {
+			case X64_ADD:
+				fprintf(outputFile, "    addl %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			case X64_CDQ:
+				break;
+			case X64_IDIV:
+				fprintf(outputFile, "    idivl %s\n", srcBuffer);
+				break;
+			case X64_IMUL:
+				fprintf(outputFile, "    imull %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_MOV:
 				// Example: move immediate into a register or memory
 				fprintf(outputFile, "    movl %s, %s\n", srcBuffer, dstBuffer);
@@ -70,10 +84,32 @@ void generateX64Function(FILE* outputFile, const Function* func)
 				fprintf(outputFile, "    popq %%rbp\n");
 				fprintf(outputFile, "    ret\n");
 				break;
+			case X64_SUB:
+				fprintf(outputFile, "    subl %s, %s\n", srcBuffer, dstBuffer);
+				break;
 		}
 	}
 
 	fprintf(outputFile, "\n"); // Blank line between functions
+}
+
+void emitX64(X64InstructionType op, Operand src, Operand dst) {
+	if (op == X64_MOV) {
+		if (src.type == OPERAND_IMM && dst.type == OPERAND_REGISTER) {
+			printf("    mov $%d, %s\n", src.immValue, dst.regName);
+		} else if (src.type == OPERAND_STACK_SLOT && dst.type == OPERAND_REGISTER) {
+			printf("    mov -%d(%%rbp), %s\n", src.stackOffset, dst.regName);
+		} else if (src.type == OPERAND_REGISTER && dst.type == OPERAND_STACK_SLOT) {
+			printf("    mov %s, -%d(%%rbp)\n", src.regName, dst.stackOffset);
+		} else if (src.type == OPERAND_REGISTER && dst.type == OPERAND_REGISTER) {
+			printf("    mov %s, %s\n", src.regName, dst.regName);
+		}
+	} else if (op == X64_NEG) {
+		printf("    neg %s\n", src.regName);
+	} else if (op == X64_NOT) {
+		printf("    not %s\n", src.regName);
+	}
+	// etc...
 }
 
 void printX64Function(const Function* function) {
@@ -84,6 +120,24 @@ void printX64Function(const Function* function) {
 	for (size_t i = 0; i < function->instructionCount; i++) {
 		const X64Instruction* instr = &instructions[i];
 		switch (instr->type) {
+			case X64_ADD:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  addl %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			case X64_CDQ:
+				printf("  cdq\n");
+				break;
+			case X64_IDIV:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  idivl %s\n", srcBuffer);
+				break;
+			case X64_IMUL:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  imul %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_MOV:
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
@@ -99,6 +153,11 @@ void printX64Function(const Function* function) {
 				break;
 			case X64_RET:
 				printf("  ret\n");
+				break;
+			case X64_SUB:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  subl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 			default:
 				printf("  Unknown instruction\n");

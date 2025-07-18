@@ -35,6 +35,7 @@ typedef struct Program {
 // Operand types (shared across architectures)
 typedef enum {
 	OPERAND_IMM,
+	OPERAND_VARNAME,
 	OPERAND_STACK_SLOT,
 	OPERAND_REGISTER
 } OperandType;
@@ -44,7 +45,10 @@ typedef struct {
 	union {
 		int immValue;        // Immediate value
 		int stackOffset;
-		const char* regName; // Register name
+		union {
+			const char* varName; // Temporary variable name (from Tacky).
+			const char* regName; // Register name
+		};
 	};
 } Operand;
 
