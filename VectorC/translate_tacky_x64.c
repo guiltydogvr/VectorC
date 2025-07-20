@@ -12,29 +12,6 @@
 #include "ast_x64.h"
 #include "stb_ds.h"
 
-// --------------------------------------------------
-// Local helper to track tmp -> stack offsets
-// --------------------------------------------------
-
-typedef struct {
-	const char* tmpName;
-	int stackOffset;  // e.g., 4, 8, etc.
-} TmpMapping;
-
-static TmpMapping* tmpMappings = NULL;
-
-static int getStackOffsetForTmp(const char* tmpName) {
-	for (int i = 0; i < arrlenu(tmpMappings); i++) {
-		if (strcmp(tmpMappings[i].tmpName, tmpName) == 0) {
-			return tmpMappings[i].stackOffset;
-		}
-	}
-	// Should never happen in well formed code
-	fprintf(stderr, "Unknown tmp variable: %s\n", tmpName);
-	exit(EXIT_FAILURE);
-}
-
-
 static void emitX64(X64Instruction** instructions, X64Instruction x64Instruction) {
 	arrput(*instructions, x64Instruction);
 }
@@ -45,7 +22,6 @@ static void emitX64(X64Instruction** instructions, X64Instruction x64Instruction
 void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) {
 #define VAR(var) ((Operand){ .type = OPERAND_VARNAME, .varName = var })
 #define REG(reg) ((Operand){ .type = OPERAND_REGISTER, .regName = reg })
-#define SLOT(offset) ((Operand){ .type = OPERAND_STACK_SLOT, .stackOffset = offset })
 #define IMM(val) ((Operand){ .type = OPERAND_IMM, .immValue = val })
 	for (size_t i = 0; i < arrlenu(tackyProgram->functions); i++) {
 		const TackyFunction* tackyFunc = &tackyProgram->functions[i];
@@ -55,9 +31,6 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 
 		X64Instruction* x64Instructions = (X64Instruction*)asmFunc.instructions;
 
-		tmpMappings = NULL;
-
-		int nextOffset = 4;  // start at -4(%rbp)
 		for (size_t j = 0; j < arrlenu(tackyFunc->instructions); j++) {
 			const TackyInstruction* instr = &tackyFunc->instructions[j];
 
@@ -215,30 +188,10 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 		asmFunc.instructionCount = arrlenu(x64Instructions);
 		arrput(asmProgram->functions, asmFunc);
 		asmProgram->functionCount = arrlenu(asmProgram->functions);
-		arrfree(tmpMappings);
 #undef IMM
-#undef SLOT
 #undef REG
 #undef VAR
 	}
-}
-
-static int nextOffset = -4; // global or passed in
-
-static int getOrAssignStackOffset(const char* tmpName) {
-	for (int i = 0; i < arrlenu(tmpMappings); i++) {
-		if (strcmp(tmpMappings[i].tmpName, tmpName) == 0) {
-			return tmpMappings[i].stackOffset;
-		}
-	}
-	// New tmp — assign a new slot
-	arrput(tmpMappings, ((TmpMapping){
-		.tmpName = strdup(tmpName),
-		.stackOffset = nextOffset
-	}));
-	int assigned = nextOffset;
-	nextOffset -= 4; // Move down the stack
-	return assigned;
 }
 
 void replacePseudoRegistersX64(Program* asmProgram) {

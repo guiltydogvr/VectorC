@@ -15,11 +15,6 @@
 // Local helper to track tmp -> stack offsets
 // --------------------------------------------------
 
-typedef struct {
-	const char* tmpName;
-	int stackOffset;  // e.g., 4, 8, etc.
-} TmpMapping;
-
 static TmpMapping* tmpMappings = NULL;
 
 static int getStackOffsetForTmp(const char* tmpName) {

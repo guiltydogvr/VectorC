@@ -6,6 +6,7 @@
 //
 
 #include "ast_x64.h"
+#include "stb_ds.h"
 #include <stdio.h>
 
 // Convert an operand to a string for x64 (helper function)
@@ -26,6 +27,41 @@ void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 	}
 }
 
+// --------------------------------------------------
+// Local helper to track tmp -> stack offsets
+// --------------------------------------------------
+
+static TmpMapping* s_tmpMappings = NULL;
+
+static int getStackOffsetForTmp(const char* tmpName) {
+	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
+		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
+			return s_tmpMappings[i].stackOffset;
+		}
+	}
+	// Should never happen in well formed code
+	fprintf(stderr, "Unknown tmp variable: %s\n", tmpName);
+	exit(EXIT_FAILURE);
+}
+
+static int s_nextOffset = -4; // global or passed in
+
+int getOrAssignStackOffset(const char* tmpName) {
+	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
+		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
+			return s_tmpMappings[i].stackOffset;
+		}
+	}
+	// New tmp — assign a new slot
+	arrput(s_tmpMappings, ((TmpMapping){
+		.tmpName = strdup(tmpName),
+		.stackOffset = s_nextOffset
+	}));
+	int assigned = s_nextOffset;
+	s_nextOffset -= 4; // Move down the stack
+	return assigned;
+}
+
 //---------------------------------------------------------
 // X64 CODEGEN
 //---------------------------------------------------------
@@ -42,10 +78,12 @@ void generateX64Function(FILE* outputFile, const Function* func)
 		fprintf(outputFile, "%s:\n", func->name);
 	}
 
+	int bytesToAllocate = alignTo(-s_nextOffset, 16);
+	
 	// X86-64 prologue
 	fprintf(outputFile, "    pushq %%rbp\n");
 	fprintf(outputFile, "    movq %%rsp, %%rbp\n");
-	fprintf(outputFile, "    subq $32, %%rsp\n"); // example stack allocation
+	fprintf(outputFile, "    subq $%d, %%rsp\n", bytesToAllocate); // example stack allocation
 
 	// Emit instructions
 	const X64Instruction* instructions = (const X64Instruction*)func->instructions;

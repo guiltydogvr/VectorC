@@ -12,6 +12,8 @@
 #include <string.h>
 #include <assert.h>
 
+extern inline int alignTo(int value, int alignment);
+
 const char* getArchitectureName(Architecture arch)
 {
 	static const char* s_architectureNames[] = {

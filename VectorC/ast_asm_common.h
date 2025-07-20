@@ -52,8 +52,17 @@ typedef struct {
 	};
 } Operand;
 
+typedef struct {
+	const char* tmpName;
+	int stackOffset;  // e.g., 4, 8, etc.
+} TmpMapping;
+
 const char* getArchitectureName(Architecture arch);
 void generateCode(const Program* program, const char* outputFilename);
 void printAsmProgram(const Program* program);
+
+inline int alignTo(int value, int alignment) {
+	return (value + alignment - 1) & ~(alignment - 1);
+}
 
 #endif /* ast_asm_common_h */
