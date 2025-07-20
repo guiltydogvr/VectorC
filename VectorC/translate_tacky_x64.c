@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "translate_tacky_x64.h"
 #include "ast_x64.h"
 #include "stb_ds.h"
@@ -240,14 +241,12 @@ static int getOrAssignStackOffset(const char* tmpName) {
 	return assigned;
 }
 
-void replacePseudoRegistersX64(const TackyProgram* tackyProgram, Program* asmProgram) {
+void replacePseudoRegistersX64(Program* asmProgram) {
 #define SLOT(offset) ((Operand){ .type = OPERAND_STACK_SLOT, .stackOffset = offset })
 	for (size_t iFunc = 0; iFunc < asmProgram->functionCount; iFunc++) {
 		const Function* func = &asmProgram->functions[iFunc];
 
 		const X64Instruction* instructions = (const X64Instruction*)func->instructions;
-//		char srcBuffer[32];
-//		char dstBuffer[32];
 
 		for (size_t i = 0; i < func->instructionCount; i++) {
 			X64Instruction* instr = (X64Instruction*)&instructions[i];
@@ -264,4 +263,117 @@ void replacePseudoRegistersX64(const TackyProgram* tackyProgram, Program* asmPro
 		}
 	}
 #undef SLOT
+}
+
+void fixupIllegalInstructionsX64(Program* asmProgram, Program* finalAsmProgram) {
+#define REG(reg) ((Operand){ .type = OPERAND_REGISTER, .regName = reg })
+	const Operand scratch = REG("%r10d");
+
+	for (size_t iFunc = 0; iFunc < asmProgram->functionCount; iFunc++) {
+		const Function* srcFunc = &asmProgram->functions[iFunc];
+
+		Function outFunc = {
+			.name = strdup(srcFunc->name),
+			.arch = srcFunc->arch
+		};
+
+		X64Instruction* fixedInstructions = NULL;
+		const X64Instruction* instrs = (const X64Instruction*)srcFunc->instructions;
+
+		for (size_t i = 0; i < srcFunc->instructionCount; i++) {
+			const X64Instruction* instr = &instrs[i];
+
+			bool srcIsMem = instr->src.type == OPERAND_STACK_SLOT;
+			bool dstIsMem = instr->dst.type == OPERAND_STACK_SLOT;
+
+			switch (instr->type) {
+				case X64_MOV:
+					if (srcIsMem && dstIsMem) {
+						// mov [mem], [mem] → use scratch reg
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = instr->src,
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = scratch,
+							.dst = instr->dst
+						}));
+					} else {
+						arrput(fixedInstructions, *instr);
+					}
+					break;
+
+				case X64_ADD:
+				case X64_SUB:
+				case X64_IMUL:
+					if (srcIsMem && dstIsMem) {
+						// <op> [mem], [mem] → fix via scratch
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = instr->dst,
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = instr->type,
+							.src = instr->src,
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = scratch,
+							.dst = instr->dst
+						}));
+					}
+					else if (instr->type == X64_IMUL && instr->src.type == OPERAND_IMM && instr->dst.type == OPERAND_STACK_SLOT) {
+						// imull $imm, [mem] — illegal
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = instr->dst,
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_IMUL,
+							.src = instr->src,      // $imm
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = scratch,
+							.dst = instr->dst
+						}));
+					} else {
+						arrput(fixedInstructions, *instr);  // fallback
+					}
+					break;
+				case X64_IDIV:
+					if (instr->src.type == OPERAND_IMM) {
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = instr->src,
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_IDIV,
+							.src = scratch
+						}));
+					} else {
+						arrput(fixedInstructions, *instr);
+					}
+					break;
+				default:
+					// All other instructions can be copied directly
+					arrput(fixedInstructions, *instr);
+					break;
+			}
+		}
+
+		outFunc.instructions = fixedInstructions;
+		outFunc.instructionCount = arrlenu(fixedInstructions);
+		arrput(finalAsmProgram->functions, outFunc);
+		finalAsmProgram->functionCount = arrlenu(finalAsmProgram->functions);
+	}
+
+#undef REG
 }

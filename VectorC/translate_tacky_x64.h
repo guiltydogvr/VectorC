@@ -13,6 +13,6 @@
 #include "ast_asm_common.h"
 
 void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram);
-void replacePseudoRegistersX64(const TackyProgram* tackyProgram, Program* asmProgram);
-
+void replacePseudoRegistersX64(Program* asmProgram);
+void fixupIllegalInstructionsX64(Program* asmProgram, Program* finalAsmProgram);
 #endif

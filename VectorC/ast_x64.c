@@ -45,7 +45,7 @@ void generateX64Function(FILE* outputFile, const Function* func)
 	// X86-64 prologue
 	fprintf(outputFile, "    pushq %%rbp\n");
 	fprintf(outputFile, "    movq %%rsp, %%rbp\n");
-	fprintf(outputFile, "    subq $16, %%rsp\n"); // example stack allocation
+	fprintf(outputFile, "    subq $32, %%rsp\n"); // example stack allocation
 
 	// Emit instructions
 	const X64Instruction* instructions = (const X64Instruction*)func->instructions;
@@ -61,6 +61,7 @@ void generateX64Function(FILE* outputFile, const Function* func)
 				fprintf(outputFile, "    addl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 			case X64_CDQ:
+				fprintf(outputFile, "    cdq\n");
 				break;
 			case X64_IDIV:
 				fprintf(outputFile, "    idivl %s\n", srcBuffer);
@@ -73,10 +74,10 @@ void generateX64Function(FILE* outputFile, const Function* func)
 				fprintf(outputFile, "    movl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 			case X64_NEG:
-				fprintf(outputFile, "    neg %s\n", srcBuffer);
+				fprintf(outputFile, "    negl %s\n", srcBuffer);
 				break;
 			case X64_NOT:
-				fprintf(outputFile, "    not %s\n", srcBuffer);
+				fprintf(outputFile, "    notl %s\n", srcBuffer);
 				break;
 			case X64_RET:
 				// X86-64 epilogue
@@ -143,15 +144,15 @@ void printX64Function(const Function* function) {
 			case X64_MOV:
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
-				printf("  mov %s, %s\n", srcBuffer, dstBuffer);
+				printf("  movl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 			case X64_NEG:
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-				printf("  neg %s\n", srcBuffer);
+				printf("  negl %s\n", srcBuffer);
 				break;
 			case X64_NOT:
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-				printf("  not %s\n", srcBuffer);
+				printf("  notl %s\n", srcBuffer);
 				break;
 			case X64_RET:
 				printf("  ret\n");

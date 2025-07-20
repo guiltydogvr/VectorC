@@ -176,13 +176,16 @@ int main(int argc, const char * argv[]) {
 	}
 
 	Program asmProgram = { 0 };
-
+	Program finalAsmProgram = { 0 };
 	switch (arch)
 	{
 		case ARCH_X64:
+// Pass 1.
 			translateTackyToX64(tackyProgram, &asmProgram);
-			printAsmProgram(&asmProgram);
-			replacePseudoRegistersX64(tackyProgram, &asmProgram);
+// Pass 2.
+			replacePseudoRegistersX64(&asmProgram);
+// Pass 3.
+			fixupIllegalInstructionsX64(&asmProgram, &finalAsmProgram);
 			break;
 		case ARCH_ARM64:
 			translateTackyToARM64(tackyProgram, &asmProgram);
@@ -190,9 +193,9 @@ int main(int argc, const char * argv[]) {
 		default:
 			printf("Unsupported architecture`n");
 	}
-	printAsmProgram(&asmProgram);
+	printAsmProgram(&finalAsmProgram);
 
-	generateCode(&asmProgram, sourceFilename);
+	generateCode(&finalAsmProgram, sourceFilename);
 	if (bCodegen) {
 		return EXIT_SUCCESS;
 	}
