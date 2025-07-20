@@ -9,6 +9,8 @@
 #define ast_x64_h
 
 #include "ast_asm_common.h"
+#include "tacky.h"
+#include "stb_ds.h"
 
 // x64 instruction types
 typedef enum {
@@ -33,9 +35,11 @@ typedef struct X64Instruction {
 
 // Function declarations for x64 code generation
 void getX64Operand(const Operand* op, char* buffer, size_t bufferSize);
-int getOrAssignStackOffset(const char* tmpName);
+int getOrAssignStackOffsetX64(const char* tmpName);
 void generateX64Function(FILE* outputFile, const Function* func);
-//void emitX64(X64InstructionType op, Operand src, Operand dst);
+void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram);
+void replacePseudoRegistersX64(Program* asmProgram);
+void fixupIllegalInstructionsX64(Program* asmProgram, Program* finalAsmProgram);
 void printX64Function(const Function* function);
 
 #endif /* ast_x64_h */

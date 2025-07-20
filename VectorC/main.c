@@ -12,7 +12,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "tacky.h"
-#include "translate_tacky_x64.h"
+#include "ast_x64.h"
 #include "translate_tacky_arm64.h"
 
 #define STB_DS_IMPLEMENTATION
