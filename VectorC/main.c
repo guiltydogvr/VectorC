@@ -13,7 +13,7 @@
 #include "parser.h"
 #include "tacky.h"
 #include "ast_x64.h"
-#include "translate_tacky_arm64.h"
+#include "ast_arm64.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -188,17 +188,22 @@ int main(int argc, const char * argv[]) {
 			fixupIllegalInstructionsX64(&asmProgram, &finalAsmProgram);
 			break;
 		case ARCH_ARM64:
+// Pass 1.
 			translateTackyToARM64(tackyProgram, &asmProgram);
+// Pass 2.
+			replacePseudoRegistersARM64(&asmProgram);
+// Pass 3.
+			fixupIllegalInstructionsARM64(&asmProgram, &finalAsmProgram);
 			break;
 		default:
 			printf("Unsupported architecture`n");
 	}
-	printAsmProgram(&finalAsmProgram);
-
-	generateCode(&finalAsmProgram, sourceFilename);
 	if (bCodegen) {
 		return EXIT_SUCCESS;
 	}
+	printAsmProgram(&finalAsmProgram);
+
+	generateCode(&finalAsmProgram, sourceFilename);
 	
 	const char* archString = getArchitectureName(arch);
 	

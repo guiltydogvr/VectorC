@@ -341,6 +341,7 @@ const char* getTokenName(TokenType tokenType)
 		[TOKEN_SLASH] = "TOKEN_SLASH",
 		[TOKEN_STAR] = "TOKEN_STAR",
 		[TOKEN_TILDE] = "TOKEN_TILDE",
+		[TOKEN_MOD] = "TOKEN_MOD",
 		[TOKEN_BANG] = "TOKEN_BANG",
 		[TOKEN_BANG_EQUAL] = "TOKEN_BANG_EQUAL",
 		[TOKEN_EQUAL] = "TOKEN_EQUAL",
