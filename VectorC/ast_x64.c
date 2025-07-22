@@ -72,13 +72,16 @@ void generateX64Function(FILE* outputFile, const Function* func)
 	// Decide function label
 	// Typically: `_main` on macOS or `main` on Linux.
 	// This example just demonstrates the logic:
+	const char* funcName = func->name;
+
+#ifdef __APPLE__
 	if (strcmp(func->name, "main") == 0) {
-		fprintf(outputFile, ".global _main\n");
-		fprintf(outputFile, "_main:\n");
-	} else {
-		fprintf(outputFile, ".global %s\n", func->name);
-		fprintf(outputFile, "%s:\n", func->name);
+		funcName = "_main";
 	}
+#endif
+
+	fprintf(outputFile, ".global %s\n", funcName);
+	fprintf(outputFile, "%s:\n", funcName);
 
 	int bytesToAllocate = alignTo(-s_nextOffset, 16);
 	

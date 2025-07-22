@@ -122,10 +122,15 @@ int main(int argc, const char * argv[]) {
 	assert(find != NULL);
 	size_t len = find - inputFilename;
 	strncpy(outFilename, inputFilename, len);
+#ifdef _WIN32
+	strncpy(outFilename + len, ".exe", 4);
+	len += 4;
+#endif
+
 	outFilename[len] = '\0';
 
 	char commandline[2048] = "";
-	sprintf(commandline, "gcc -E -P %s -o %s", inputFilename, preprocessedFilename);
+	sprintf(commandline, "clang -E -P %s -o %s", inputFilename, preprocessedFilename);
 	if (bVerbose) {
 		printf("Running: %s\n", commandline);
 	}
@@ -207,7 +212,11 @@ int main(int argc, const char * argv[]) {
 	
 	const char* archString = getArchitectureName(arch);
 	
-	sprintf(commandline, "gcc -arch %s %s -o %s", archString, sourceFilename, outFilename);
+#ifdef __APPLE__
+	sprintf(commandline, "clang -arch %s %s -o %s", archString, sourceFilename, outFilename);
+#else
+	sprintf(commandline, "clang %s -o %s", sourceFilename, outFilename);
+#endif
 	if (bVerbose) {
 		printf("Running: %s\n", commandline);
 	}

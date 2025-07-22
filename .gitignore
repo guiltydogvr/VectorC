@@ -22,7 +22,13 @@ build/
 
 # VS Code specific
 .vscode/
+.vs/
 *.code-workspace
+
+# Visual Studio specific
+.vs/
+*.vcxproj
+*.vcxproj.user
 
 # Premake5 generated files
 Makefile

@@ -21,6 +21,7 @@ FunctionNode* createFunctionNode(const char* name, StatementNode* body) {
 	FunctionNode* node = (FunctionNode*)malloc(sizeof(FunctionNode));
 	node->name = strdup(name);  // Duplicate the name
 	node->body = body;
+	node->next = NULL;
 	return node;
 }
 
