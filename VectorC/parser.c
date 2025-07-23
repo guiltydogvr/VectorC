@@ -9,47 +9,72 @@
 #include "token.h"
 #include "stb_ds.h"
 
-// Get the current token
+// --------------------------------------------------
+// Helpers
+// --------------------------------------------------
+
+// Return a pointer to the token the parser is currently looking at.
+//
+// parser - Parser state containing the token list and position.
+// returns - Pointer to the current Token object in the array.
 static const Token* currentToken(Parser* parser) {
-	return &parser->tokens[parser->current];
+        return &parser->tokens[parser->current];
 }
 
-// Advance to the next token
+// Move the parser forward by one token if we haven't hit EOF yet.
+//
+// parser - Parser state to update.
 static void advance(Parser* parser) {
-	if (currentToken(parser)->type != TOKEN_EOF) {
-		parser->current++;
-	}
+        if (currentToken(parser)->type != TOKEN_EOF) {
+                parser->current++;
+        }
 }
 
-// Check if the current token matches a type
+// If the current token is of the specified type, consume it and return 1.
+// Otherwise return 0 and leave the parser state unchanged.
+//
+// parser - Parser state.
+// type   - TokenType we are trying to match.
+// returns - 1 if a token was consumed, 0 otherwise.
 static int match(Parser* parser, TokenType type) {
-	if (currentToken(parser)->type == type) {
-		advance(parser);
-		return 1;
-	}
-	return 0;
+        if (currentToken(parser)->type == type) {
+                advance(parser);
+                return 1;
+        }
+        return 0;
 }
 
+// Map a binary operator token to a numeric precedence level.
+// Higher numbers mean higher precedence. Non operators return 0.
 static int getPrecedence(TokenType type) {
-	switch (type) {
-		case TOKEN_STAR:
-		case TOKEN_SLASH:
-		case TOKEN_MOD:
-			return 10;
-		case TOKEN_PLUS:
-		case TOKEN_MINUS:
-			return 5;
-		default:
-			return 0;
-	}
+        switch (type) {
+                case TOKEN_STAR:
+                case TOKEN_SLASH:
+                case TOKEN_MOD:
+                        return 10;
+                case TOKEN_PLUS:
+                case TOKEN_MINUS:
+                        return 5;
+                default:
+                        return 0;
+        }
 }
 
+// Return non-zero if the token represents a binary operator.
+//
+// type - TokenType to query.
+// returns - Operator precedence > 0 if binary operator.
 static int isBinaryOperator(TokenType type) {
-	return getPrecedence(type) > 0;
+        return getPrecedence(type) > 0;
 }
 
+// Parse an expression using a precedence climbing algorithm.
+//
+// parser  - Parser state.
+// minPrec - Minimum precedence allowed for the current parse step.
+// returns - Newly allocated AST node representing the expression.
 ExpressionNode* parseExpression(Parser* parser, int minPrec) {
-	ExpressionNode* left = NULL;
+        ExpressionNode* left = NULL;
 
 	// Parse factor or unary
 	if (match(parser, TOKEN_LEFT_PAREN)) {
@@ -107,6 +132,11 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 	return left;
 }
 
+// Parse a single factor which may be a literal, unary expression or
+// parenthesised sub-expression.
+//
+// parser - Parser state.
+// returns - AST node representing the factor.
 ExpressionNode* parseFactor(Parser* parser) {
 	if (match(parser, TOKEN_LEFT_PAREN)) {  // Handle grouped expressions
 		ExpressionNode* expr = parseExpression(parser, 0);  // Parse inside parentheses
@@ -133,6 +163,11 @@ ExpressionNode* parseFactor(Parser* parser) {
 	exit(EXIT_FAILURE);
 }
 
+// Parse a single statement.  Currently only the 'return' statement is
+// supported.
+//
+// parser - Parser state.
+// returns - Newly allocated StatementNode.
 StatementNode* parseStatement(Parser* parser) {
 	if (match(parser, TOKEN_RETURN)) {
 		ExpressionNode* expr = parseExpression(parser, 0);
@@ -146,6 +181,11 @@ StatementNode* parseStatement(Parser* parser) {
 	exit(EXIT_FAILURE);
 }
 
+// Parse zero or more statements enclosed in braces.  The closing brace is
+// consumed by this function.
+//
+// parser - Parser state positioned after the opening '{'.
+// returns - First statement in the list or NULL for an empty block.
 StatementNode* parseStatementList(Parser* parser) {
 	if (match(parser, TOKEN_RIGHT_BRACE)) {
 		return NULL; // Empty statement list, but now we properly consume the '}'
@@ -156,6 +196,11 @@ StatementNode* parseStatementList(Parser* parser) {
 	return stmt;
 }
 
+// Parse a full function definition including return type, name,
+// parameter list (restricted to 'void') and body.
+//
+// parser - Parser state starting at the function definition.
+// returns - Newly allocated FunctionNode AST.
 FunctionNode* parseFunction(Parser* parser) {
 	if (!match(parser, TOKEN_INT) && !match(parser, TOKEN_VOID)) {
 		printf("Error: Expected return type ('int' or 'void').\n");
@@ -190,7 +235,7 @@ FunctionNode* parseFunction(Parser* parser) {
 
 	StatementNode* body = parseStatementList(parser);
 
-	// ✅ Ensure function body ends correctly
+        // Ensure function body ends correctly
 	if (!match(parser, TOKEN_RIGHT_BRACE)) {
 		printf("Error: Expected '}' at end of function body.\n");
 		exit(EXIT_FAILURE);
@@ -203,6 +248,11 @@ FunctionNode* parseFunction(Parser* parser) {
 	return createFunctionNode(functionName, body);
 }
 
+// Parse an entire source file into a program AST.  Multiple functions are
+// linked together using the FunctionNode 'next' pointer.
+//
+// parser - Parser initialised with an array of tokens.
+// returns - ProgramNode representing the whole file.
 ProgramNode* parseProgram(Parser* parser) {
 	ProgramNode* program = NULL;
 	FunctionNode* lastFunction = NULL;
@@ -215,8 +265,8 @@ ProgramNode* parseProgram(Parser* parser) {
 			if (!program) {
 				program = createProgramNode(function);
 			} else {
-				// Append the function to the existing program
-				lastFunction->next = function; // Requires `next` in `FunctionNode`
+                                // Append the function to the existing program
+                                lastFunction->next = function;
 			}
 			lastFunction = function;
 		} else {
@@ -233,6 +283,12 @@ ProgramNode* parseProgram(Parser* parser) {
 	}
 	return program;
 }
+
+// Convenience helper used by main.c to parse an array of tokens.
+// Returns the root ProgramNode.
+//
+// tokens - Null terminated array of tokens.
+// returns - Parsed ProgramNode tree.
 
 ProgramNode* parseProgramTokens(const Token* tokens) {
 	Parser parser = {tokens, 0};
