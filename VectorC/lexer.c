@@ -73,8 +73,8 @@ void initLexer(const char* source) {
 //		{ TOKEN_WHILE, "while" },
 	};
 
-	const size_t kNumTokens = sizeof(s_keywordTokenList) / sizeof(KeyToken);
-	static_assert(kNumTokens < (int32_t)TOKEN_COUNT, "Invalid Token");
+        const size_t kNumTokens = sizeof(s_keywordTokenList) / sizeof(KeyToken);
+        static_assert(sizeof(s_keywordTokenList) / sizeof(KeyToken) < (int32_t)TOKEN_COUNT, "Invalid Token");
 
 	for (int32_t token = 0; token < kNumTokens; ++token) {
 		trieInsert(root, s_keywordTokenList[token].keyword, s_keywordTokenList[token].type);
@@ -344,8 +344,8 @@ const char* getTokenName(TokenType tokenType)
 		[TOKEN_MOD] = "TOKEN_MOD",
 		[TOKEN_BANG] = "TOKEN_BANG",
 		[TOKEN_BANG_EQUAL] = "TOKEN_BANG_EQUAL",
-		[TOKEN_EQUAL] = "TOKEN_EQUAL",
-		[TOKEN_EQUAL_EQUAL] = "TOKEN_EQUAL",
+                [TOKEN_EQUAL] = "TOKEN_EQUAL",
+                [TOKEN_EQUAL_EQUAL] = "TOKEN_EQUAL_EQUAL",
 		[TOKEN_GREATER] = "TOKEN_GREATER",
 		[TOKEN_GREATER_EQUAL] = "TOKEN_GREATER_EQUAL",
 		[TOKEN_LESS] = "TOKEN_LESS",
