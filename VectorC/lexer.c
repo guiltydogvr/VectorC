@@ -11,19 +11,24 @@
 #include "stb_ds.h"
 
 typedef struct {
-	const char* start;
-	const char* current;
-	int32_t line;
+        const char* start;   // Beginning of the current lexeme
+        const char* current; // Current character being processed
+        int32_t line;        // Current line for error reporting
 } Lexer;
 
 Lexer lexer;
 
+// Trie containing all reserved keywords for quick lookup
 static TrieNode* s_keywordsTrie = NULL;
 
+// Initialise the global lexer state with a source string.
+// Builds the keyword trie used for identifier classification.
+//
+// source - Null terminated C string containing the code to scan.
 void initLexer(const char* source) {
-	lexer.start = source;
-	lexer.current = source;
-	lexer.line = 1;
+        lexer.start = source;
+        lexer.current = source;
+        lexer.line = 1;
 	
 	TrieNode* root = createTrieNode();
 
@@ -73,59 +78,79 @@ void initLexer(const char* source) {
 //		{ TOKEN_WHILE, "while" },
 	};
 
-	const size_t kNumTokens = sizeof(s_keywordTokenList) / sizeof(KeyToken);
-	static_assert(kNumTokens < (int32_t)TOKEN_COUNT, "Invalid Token");
+        enum { kNumTokens = sizeof(s_keywordTokenList) / sizeof(KeyToken) };
+        static_assert(kNumTokens < (int32_t)TOKEN_COUNT, "Invalid Token");
 
 	for (int32_t token = 0; token < kNumTokens; ++token) {
 		trieInsert(root, s_keywordTokenList[token].keyword, s_keywordTokenList[token].type);
 	}
 	s_keywordsTrie = root;
 	
-	printf("Begin Trie Test\n");
-	for (int32_t i = 0; i < kNumTokens; i++) {
-		const char* keyword = s_keywordTokenList[i].keyword; // testKeywords[i];
-		TokenType token = trieSearch(root, keyword);
-		printf("Keyword: %-10s => Token: %s\n", keyword, getTokenName(token));
-	}
-	printf("End Trie Test\n");
 }
 
+// Free any resources allocated by initLexer, namely the keyword trie.
+//
+// No parameters or return value.
 void destroyLexer(void) {
-	freeTrie(s_keywordsTrie);
+        freeTrie(s_keywordsTrie);
 }
 
+// Return true if the character is alphabetic or an underscore.
+//
+// c - Character to test.
+// returns - Non-zero on success.
 static bool isAlpha(char c) {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
+// Return true if the character is a decimal digit.
+//
+// c - Character to test.
+// returns - Non-zero on success.
 static bool isDigit(char c) {
-	return c >= '0' && c <= '9';
+        return c >= '0' && c <= '9';
 }
 
+// Check if we've reached the end of the input stream.
+//
+// returns - Non-zero at EOF.
 static bool isAtEnd(void) {
-	return *lexer.current == '\0';
+        return *lexer.current == '\0';
 }
 
+// Consume the current character and return it.
+//
+// returns - The consumed character.
 static char advance(void) {
-	lexer.current++;
-	return lexer.current[-1];
+        lexer.current++;
+        return lexer.current[-1];
 }
 
+// Look at the current character without consuming it.
+//
+// returns - Current character or '\0' at EOF.
 static char peek(void) {
-	return *lexer.current;
+        return *lexer.current;
 }
 
+// Peek one character ahead. Returns '\0' at EOF.
+//
+// returns - Next character or '\0' if past the end.
 static char peekNext(void) {
-	if (isAtEnd()) {
-		return '\0';
-	}
-	return lexer.current[1];
+        if (isAtEnd()) {
+                return '\0';
+        }
+        return lexer.current[1];
 }
 
+// If the next character matches 'expected', consume it and return true.
+//
+// expected - Character to compare against.
+// returns  - Non-zero if consumed.
 static bool match(char expected) {
-	if (isAtEnd()) {
-		return false;
-	}
+        if (isAtEnd()) {
+                return false;
+        }
 	
 	if (*lexer.current != expected) {
 		return false;
@@ -134,25 +159,40 @@ static bool match(char expected) {
 	return true;
 }
 
+// Create a basic token spanning the characters since 'lexer.start'.
+//
+// type - Token type to assign.
+// returns - Constructed Token object.
 static Token makeToken(TokenType type) {
-	Token token;
-	token.type = type;
-	token.start = lexer.start;
-	token.length = (int32_t)(lexer.current - lexer.start);
-	token.line = lexer.line;
-	return token;
+        Token token;
+        token.type = type;
+        token.start = lexer.start;
+        token.length = (int32_t)(lexer.current - lexer.start);
+        token.line = lexer.line;
+        return token;
 }
 
+// Create a numeric token storing an integer value.
+//
+// type  - Token type for the numeric literal.
+// value - Integer value of the literal.
+// returns - Constructed Token object.
 static Token makeNumberToken(TokenType type, int32_t value) {
-	Token token;
-	token.type = type;
-	token.start = lexer.start;
-	token.length = (int32_t)(lexer.current - lexer.start);
-	token.line = lexer.line;
-	token.value.intValue = value;
-	return token;
+        Token token;
+        token.type = type;
+        token.start = lexer.start;
+        token.length = (int32_t)(lexer.current - lexer.start);
+        token.line = lexer.line;
+        token.value.intValue = value;
+        return token;
 }
 
+// Helper used by the generic makeConstantToken macro for integer constants.
+//
+// type   - Token type.
+// lexeme - Lexeme being tokenised.
+// value  - Integer value.
+// returns - Constructed Token object.
 Token makeIntToken(TokenType type, const char* lexeme, int value) {
 	Token token;
 	token.type = type;
@@ -163,6 +203,12 @@ Token makeIntToken(TokenType type, const char* lexeme, int value) {
 	return token;
 }
 
+// Helper used by the generic makeConstantToken macro for floating constants.
+//
+// type   - Token type.
+// lexeme - Lexeme being tokenised.
+// value  - Double precision value.
+// returns - Constructed Token object.
 Token makeDoubleToken(TokenType type, const char* lexeme, double value) {
 	Token token;
 	token.type = type;
@@ -175,20 +221,27 @@ Token makeDoubleToken(TokenType type, const char* lexeme, double value) {
 
 // Generic macro for creating tokens
 #define makeConstantToken(type, lexeme, value) \
-	_Generic((value), \
-		int: makeIntToken, \
-		double: makeDoubleToken \
-	)(type, lexeme, value)
+        _Generic((value), \
+                int: makeIntToken, \
+                double: makeDoubleToken \
+        )(type, lexeme, value)
 
+// Build an error token containing an explanatory message.
+//
+// message - Null terminated error string.
+// returns - Constructed TOKEN_ERROR token.
 static Token errorToken(const char* message) {
-	Token token;
-	token.type = TOKEN_ERROR;
-	token.start = message;
-	token.length = (int32_t)strlen(message);
-	token.line = lexer.line;
-	return token;
+        Token token;
+        token.type = TOKEN_ERROR;
+        token.start = message;
+        token.length = (int32_t)strlen(message);
+        token.line = lexer.line;
+        return token;
 }
 
+// Skip over spaces, tabs, newlines and comments.
+//
+// No return value.
 static void skipWhitespace(void) {
 	for (;;) {
 		char c = peek();
@@ -218,6 +271,10 @@ static void skipWhitespace(void) {
 	}
 }
 
+// Determine if the currently scanned identifier matches a keyword.
+// Returns the appropriate token type for keywords or TOKEN_IDENTIFIER.
+//
+// returns - TokenType for the identifier.
 static TokenType identifierType(void) {
 	size_t len = lexer.current - lexer.start;
 	char keyword[len+1];
@@ -227,6 +284,9 @@ static TokenType identifierType(void) {
 	return trieSearch(s_keywordsTrie, keyword);
 }
 
+// Scan an identifier or keyword.
+//
+// returns - TOKEN_IDENTIFIER or keyword token.
 static Token identifier(void) {
 	while (isAlpha(peek()) || isDigit(peek())) {
 		advance();
@@ -234,12 +294,14 @@ static Token identifier(void) {
 	return makeToken(identifierType());
 }
 
+// Scan a sequence of digits as an integer literal.
+//
+// returns - TOKEN_NUMBER or TOKEN_ERROR if invalid.
 static Token number(void) {
 	const char* start = lexer.start;
 
 	while (isDigit(peek())) advance();
 
-	// 🚩 New check here
 	if (isAlpha(peek())) {
 		return errorToken("Invalid identifier: cannot start with a digit.");
 	}
@@ -253,6 +315,9 @@ static Token number(void) {
 	return makeNumberToken(TOKEN_NUMBER, value);
 }
 
+// Scan a double quoted string literal.
+//
+// returns - TOKEN_STRING or TOKEN_ERROR if unterminated.
 static Token string(void) {
 	while (peek() != '"' && !isAtEnd()) {
 		if (peek() == '\n') {
@@ -270,6 +335,10 @@ static Token string(void) {
 	return makeToken(TOKEN_STRING);
 }
 
+// Scan and return the next token from the input stream.
+// This is the core of the lexical analyser.
+//
+// returns - Next scanned Token.
 Token scanToken(void) {
 	skipWhitespace();
 	lexer.start = lexer.current;
@@ -326,6 +395,10 @@ Token scanToken(void) {
 	return errorToken("Unexpected character.");
 }
 
+// Convert a TokenType enum to a printable name.
+//
+// tokenType - Enumerator to convert.
+// returns   - String representation for debugging.
 const char* getTokenName(TokenType tokenType)
 {
 	static const char* s_tokenNames[] = {
@@ -378,6 +451,10 @@ const char* getTokenName(TokenType tokenType)
 	return s_tokenNames[tokenType];
 }
 
+// Scan the entire input producing a null terminated array of tokens
+// using stb_ds's stretchy buffer. Terminates on TOKEN_EOF.
+//
+// returns - Pointer to the token array (stb_ds buffer).
 const Token* scanTokens(void)
 {
 	Token* tokens = NULL;
