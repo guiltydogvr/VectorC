@@ -10,6 +10,7 @@
 #include "tacky.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 // Convert an operand to a string for ARM64 (helper function)
 const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize) {
