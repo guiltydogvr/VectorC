@@ -26,6 +26,7 @@ typedef struct TrieNode {
 } TrieNode;
 
 // Create a new trie node
+// returns - Newly allocated TrieNode initialised to empty.
 TrieNode* createTrieNode(void) {
 	TrieNode* node = (TrieNode*)malloc(sizeof(TrieNode));
 	if (!node) {
@@ -41,6 +42,10 @@ TrieNode* createTrieNode(void) {
 }
 
 // Insert a keyword and its associated TokenType into the trie
+//
+// root    - Root of the trie.
+// keyword - Keyword string to insert.
+// token   - Token type associated with the keyword.
 void trieInsert(TrieNode* root, const char* keyword, TokenType token) {
 	TrieNode* current = root;
 	for (size_t i = 0; i < strlen(keyword); i++) {
@@ -55,6 +60,10 @@ void trieInsert(TrieNode* root, const char* keyword, TokenType token) {
 }
 
 // Search for a keyword in the trie and return its TokenType
+//
+// root    - Trie root to search.
+// keyword - String to lookup.
+// returns - TOKEN_IDENTIFIER if not found or the keyword's token type.
 TokenType trieSearch(TrieNode* root, const char* keyword) {
 	TrieNode* current = root;
 	for (size_t i = 0; i < strlen(keyword); i++) {
@@ -68,6 +77,8 @@ TokenType trieSearch(TrieNode* root, const char* keyword) {
 }
 
 // Free the trie recursively
+//
+// node - Node to free.
 void freeTrie(TrieNode* node) {
 	if (!node) return;
 	for (int i = 0; i < TRIE_CHARSET_SIZE; i++) {

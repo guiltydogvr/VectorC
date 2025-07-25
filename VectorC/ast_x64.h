@@ -34,6 +34,7 @@ typedef struct X64Instruction {
 } X64Instruction;
 
 // Function declarations for x64 code generation
+// Implemented in ast_x64.c
 void getX64Operand(const Operand* op, char* buffer, size_t bufferSize);
 int getOrAssignStackOffsetX64(const char* tmpName);
 void generateX64Function(FILE* outputFile, const Function* func);

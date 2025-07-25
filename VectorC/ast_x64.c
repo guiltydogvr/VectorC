@@ -12,7 +12,11 @@
 #include <stdbool.h>
 #include <string.h>
 
-// Convert an operand to a string for x64 (helper function)
+// Convert an Operand structure into its textual x64 representation.
+//
+// op         - Operand to stringify.
+// buffer     - Destination buffer.
+// bufferSize - Size of the destination buffer.
 void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 	switch (op->type) {
 		case OPERAND_IMM:
@@ -36,6 +40,10 @@ void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 
 static TmpMapping* s_tmpMappings = NULL;
 
+// Return the stack offset associated with a temporary variable name.
+//
+// tmpName - Temporary variable identifier.
+// returns - Offset in bytes.
 static int getStackOffsetForTmp(const char* tmpName) {
 	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
 		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
@@ -49,6 +57,10 @@ static int getStackOffsetForTmp(const char* tmpName) {
 
 static int s_nextOffset = -4; // global or passed in
 
+// Retrieve or allocate a stack offset for a temporary when emitting x64.
+//
+// tmpName - Name of the temporary.
+// returns - Existing or newly assigned stack offset.
 int getOrAssignStackOffsetX64(const char* tmpName) {
 	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
 		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
@@ -68,6 +80,10 @@ int getOrAssignStackOffsetX64(const char* tmpName) {
 //---------------------------------------------------------
 // X64 CODEGEN
 //---------------------------------------------------------
+// Emit x86-64 assembly instructions for a single function.
+//
+// outputFile - File to write assembly to.
+// func       - Function containing x64 instructions.
 void generateX64Function(FILE* outputFile, const Function* func)
 {
 	// Decide function label
@@ -138,14 +154,21 @@ void generateX64Function(FILE* outputFile, const Function* func)
 	fprintf(outputFile, "\n"); // Blank line between functions
 }
 
+// Helper to append an instruction to the stb_ds instruction array.
+//
+// instructions   - Pointer to dynamic array of instructions.
+// x64Instruction - Instruction to append.
 static void emitX64(X64Instruction** instructions, X64Instruction x64Instruction) {
-	arrput(*instructions, x64Instruction);
+        arrput(*instructions, x64Instruction);
 }
 
 // --------------------------------------------------
 // Main translation function
 // --------------------------------------------------
-
+// Convert a TackyProgram into x86-64 assembly instructions.
+//
+// tackyProgram - Input intermediate representation.
+// asmProgram   - Output assembly program.
 void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) {
 #define VAR(var) ((Operand){ .type = OPERAND_VARNAME, .varName = var })
 #define REG(reg) ((Operand){ .type = OPERAND_REGISTER, .regName = reg })
@@ -321,6 +344,9 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 	}
 }
 
+// Replace pseudo-register operands with stack slots for x86-64.
+//
+// asmProgram - Program to mutate in place.
 void replacePseudoRegistersX64(Program* asmProgram) {
 #define SLOT(offset) ((Operand){ .type = OPERAND_STACK_SLOT, .stackOffset = offset })
 	for (size_t iFunc = 0; iFunc < asmProgram->functionCount; iFunc++) {
@@ -345,6 +371,10 @@ void replacePseudoRegistersX64(Program* asmProgram) {
 #undef SLOT
 }
 
+// Expand x86-64 instructions that cannot operate directly on memory or immediates.
+//
+// asmProgram      - Input program with potentially illegal instructions.
+// finalAsmProgram - Output program with legal instructions only.
 void fixupIllegalInstructionsX64(Program* asmProgram, Program* finalAsmProgram) {
 #define REG(reg) ((Operand){ .type = OPERAND_REGISTER, .regName = reg })
 	const Operand scratch = REG("%r10d");
@@ -458,6 +488,9 @@ void fixupIllegalInstructionsX64(Program* asmProgram, Program* finalAsmProgram) 
 #undef REG
 }
 
+// Dump the assembly instructions for a function in human readable form.
+//
+// function - Function to display.
 void printX64Function(const Function* function) {
 	const X64Instruction* instructions = (const X64Instruction*)function->instructions;
 	char srcBuffer[32];

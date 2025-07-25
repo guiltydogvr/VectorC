@@ -14,6 +14,10 @@
 
 extern inline int alignTo(int value, int alignment);
 
+// Map an Architecture enum to a human readable string.
+//
+// arch - Architecture value.
+// returns - String name for the architecture.
 const char* getArchitectureName(Architecture arch)
 {
 	static const char* s_architectureNames[] = {
@@ -27,6 +31,10 @@ const char* getArchitectureName(Architecture arch)
 	return s_architectureNames[arch];
 }
 
+// Write assembly code for all functions in a Program to the specified file.
+//
+// program        - Input assembly program.
+// outputFilename - Target file path.
 void generateCode(const Program* program, const char* outputFilename)
 {
 	if (!program || program->functionCount == 0) {
@@ -63,7 +71,10 @@ void generateCode(const Program* program, const char* outputFilename)
 	fclose(outputFile);
 }
 
-// Print a program, dispatching based on architecture
+// Dump the contents of a Program to stdout, selecting the
+// appropriate printer for each function's architecture.
+//
+// program - Program to print.
 void printAsmProgram(const Program* program)
 {
 	for (size_t i = 0; i < program->functionCount; i++) {

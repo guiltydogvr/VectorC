@@ -86,6 +86,7 @@ typedef struct ExpressionNode {
 	} value;
 } ExpressionNode;
 
+// Allocation helpers for the C-style AST structures defined above.
 ProgramNode* createProgramNode(FunctionNode* function);
 FunctionNode* createFunctionNode(const char* name, StatementNode* body);
 StatementNode* createReturnStatementNode(ExpressionNode* expr);
