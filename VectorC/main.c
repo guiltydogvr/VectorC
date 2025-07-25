@@ -18,6 +18,11 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
+// Read an entire file into a newly allocated null terminated buffer.
+// The caller is responsible for freeing the returned string.
+//
+// path - Path to the file on disk.
+// returns - Heap allocated buffer containing the file contents.
 static char* readFile(const char * path) {
 	FILE* file = fopen(path, "rb");
 	if (file == NULL) {
@@ -44,6 +49,8 @@ static char* readFile(const char * path) {
 	return buffer;
 }
 
+// Entry point for the compiler front-end. Handles command line parsing and
+// drives each stage of the compilation pipeline.
 int main(int argc, const char * argv[]) {
 	// insert code here...
 	bool bLex = false, bParse = false, bTacky = false, bCodegen = false, bVerbose = false;

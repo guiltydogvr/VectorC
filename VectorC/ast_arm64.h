@@ -35,6 +35,7 @@ typedef struct ARM64Instruction {
 } ARM64Instruction;
 
 // Function declarations for ARM64 code generation
+// These mirror the implementations in ast_arm64.c
 const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize);
 void generateARM64Function(FILE* outputFile, const Function* func);
 void translateTackyToARM64(const TackyProgram* tackyProgram, Program* asmProgram);

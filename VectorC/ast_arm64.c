@@ -12,7 +12,12 @@
 #include <stdbool.h>
 #include <string.h>
 
-// Convert an operand to a string for ARM64 (helper function)
+// Convert an Operand structure into its textual ARM64 representation.
+//
+// op         - Operand to stringify.
+// buffer     - Destination buffer.
+// bufferSize - Size of the destination buffer.
+// returns    - Pointer to the provided buffer containing the string.
 const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 	switch (op->type) {
 		case OPERAND_IMM:
@@ -37,6 +42,10 @@ const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize) 
 
 static TmpMapping* s_tmpMappings = NULL;
 
+// Lookup the stack slot offset previously assigned to a temporary variable.
+//
+// tmpName - Name of the temporary.
+// returns - Stack offset in bytes.
 static int getStackOffsetForTmp(const char* tmpName) {
 	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
 		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
@@ -50,6 +59,11 @@ static int getStackOffsetForTmp(const char* tmpName) {
 
 static int s_nextOffset = -16; // global or passed in
 
+// Retrieve or assign a stack offset for a temporary variable when translating
+// to ARM64.
+//
+// tmpName - Name of the temporary value.
+// returns - Existing or newly allocated stack offset.
 int getOrAssignStackOffsetARM64(const char* tmpName) {
 	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
 		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
@@ -69,6 +83,10 @@ int getOrAssignStackOffsetARM64(const char* tmpName) {
 //---------------------------------------------------------
 // ARM64 CODEGEN
 //---------------------------------------------------------
+// Emit ARM64 assembly for a single translated function.
+//
+// outputFile - File handle to write assembly to.
+// func       - Function containing ARM64 instructions.
 void generateARM64Function(FILE* outputFile, const Function* func)
 {
 	// Decide function label
@@ -148,14 +166,21 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 	fprintf(outputFile, "\n"); // Blank line between functions
 }
 
+// Helper to append an instruction to a dynamic array.
+//
+// instructions      - Pointer to stb_ds dynamic array.
+// arm64Instruction  - Instruction to append.
 static void emitARM64(ARM64Instruction** instructions, ARM64Instruction arm64Instruction) {
-	arrput(*instructions, arm64Instruction);
+        arrput(*instructions, arm64Instruction);
 }
 
 // --------------------------------------------------
 // Main translation function
 // --------------------------------------------------
-
+// Convert an intermediate TackyProgram into ARM64 assembly instructions.
+//
+// tackyProgram - Input program in TACKY form.
+// asmProgram   - Output assembly program.
 void translateTackyToARM64(const TackyProgram* tackyProgram, Program* asmProgram) {
 #define VAR(var) ((Operand){ .type = OPERAND_VARNAME, .varName = var })
 #define REG(reg) ((Operand){ .type = OPERAND_REGISTER, .regName = reg })
@@ -319,6 +344,9 @@ void translateTackyToARM64(const TackyProgram* tackyProgram, Program* asmProgram
 	}
 }
 
+// Replace pseudo-register operands with actual stack slots for ARM64.
+//
+// asmProgram - Program containing instructions to fix.
 void replacePseudoRegistersARM64(Program* asmProgram) {
 #define SLOT(offset) ((Operand){ .type = OPERAND_STACK_SLOT, .stackOffset = offset })
 	for (size_t iFunc = 0; iFunc < asmProgram->functionCount; iFunc++) {
@@ -348,6 +376,11 @@ void replacePseudoRegistersARM64(Program* asmProgram) {
 #undef SLOT
 }
 
+// Pass over the program and expand instructions that are illegal on ARM64
+// into valid instruction sequences.
+//
+// asmProgram      - Input program with pseudo instructions.
+// finalAsmProgram - Output program with only legal instructions.
 void fixupIllegalInstructionsARM64(Program* asmProgram, Program* finalAsmProgram) {
 #define REG(reg) ((Operand){ .type = OPERAND_REGISTER, .regName = reg })
 	const Operand scratch = REG("w10");
@@ -445,6 +478,9 @@ void fixupIllegalInstructionsARM64(Program* asmProgram, Program* finalAsmProgram
 #undef REG
 }
 
+// Debug helper to dump a function's ARM64 instruction list to stdout.
+//
+// function - Function whose instructions will be printed.
 void printARM64Function(const Function* function)
 {
 		const ARM64Instruction* instructions = (const ARM64Instruction*)function->instructions;

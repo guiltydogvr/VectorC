@@ -9,6 +9,7 @@
 static int currentFunctionTempCounter = 0;
 static const char* currentFunctionName = NULL;
 
+// Generate a unique temporary variable name for the current function.
 static const char* newTempVarName() {
 	char* name = malloc(32);
 	if (currentFunctionName) {
@@ -19,6 +20,12 @@ static const char* newTempVarName() {
 	return name;
 }
 
+// Translate an AST expression into Tacky instructions, returning the value
+// representing the result of the expression.
+//
+// expr - AST expression node.
+// func - Current function being built.
+// returns - TackyValue holding either a constant or temp variable name.
 static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction* func) {
 	if (!expr) {
 		fprintf(stderr, "Null expression node encountered\n");
@@ -94,6 +101,10 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 	}
 }
 
+// Generate a linear Tacky representation from the high level AST.
+//
+// ast - Parsed AST program tree.
+// returns - Newly allocated TackyProgram.
 TackyProgram* generateTackyFromAst(const ProgramNode* ast) {
 	if (!ast) return NULL;
 
@@ -125,6 +136,9 @@ TackyProgram* generateTackyFromAst(const ProgramNode* ast) {
 	return program;
 }
 
+// Pretty-print a Tacky program for inspection.
+//
+// program - Program to display.
 void printTackyProgram(const TackyProgram* program) {
 	if (!program) {
 		printf("TackyProgram(NULL)\n");
