@@ -109,8 +109,6 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 			case ARM64_MUL:
 				fprintf(outputFile, "    mul %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
 				break;
-				fprintf(outputFile, "    ldr %s, %s\n", dstBuffer, srcBuffer);
-				break;
 			case ARM64_MOV:
 				// Example: mov x0, #100 => "mov x0, #100"
 				// In your code, you might parse it into srcBuffer= #100, dstBuffer= x0
