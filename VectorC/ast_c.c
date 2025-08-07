@@ -87,6 +87,21 @@ void printExpression(const ExpressionNode* expr, int indent) {
 				case BINOP_ADD:
 					opStr = "+";
 					break;
+				case BINOP_BITWISE_AND:
+					opStr = "&";
+					break;
+				case BINOP_BITWISE_OR:
+					opStr = "|";
+					break;
+				case BINOP_BITWISE_XOR:
+					opStr = "^";
+					break;
+				case BINOP_SHIFT_LEFT:
+					opStr = "<<";
+					break;
+				case BINOP_SHIFT_RIGHT:
+					opStr = ">>";
+					break;
 				case BINOP_SUBTRACT:
 					opStr = "-";
 					break;

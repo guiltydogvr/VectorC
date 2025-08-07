@@ -33,7 +33,12 @@ typedef enum {
 	BINOP_SUBTRACT, // -
 	BINOP_MULTIPLY, // *
 	BINOP_DIVIDE,   // /
-	BINOP_MODULO    // %
+	BINOP_MODULO,   // %
+	BINOP_BITWISE_AND,
+	BINOP_BITWISE_OR,
+	BINOP_BITWISE_XOR,
+	BINOP_SHIFT_LEFT,
+	BINOP_SHIFT_RIGHT,
 } BinaryOperator;
 
 typedef enum {

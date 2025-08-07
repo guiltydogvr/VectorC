@@ -317,9 +317,21 @@ Token scanToken(void) {
 		case '=':
 			return makeToken(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
 		case '<':
-			return makeToken(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+//			return makeToken(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+			if (match('=')) return makeToken(TOKEN_LESS_EQUAL);
+			if (match('<')) return makeToken(TOKEN_SHIFT_LEFT);
+			return makeToken(TOKEN_LESS);
 		case '>':
-			return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+//			return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+			if (match('=')) return makeToken(TOKEN_GREATER_EQUAL);
+			if (match('>')) return makeToken(TOKEN_SHIFT_RIGHT);
+			return makeToken(TOKEN_GREATER);
+		case '&':
+			return makeToken(TOKEN_AND);
+		case '|':
+			return makeToken(TOKEN_OR);
+		case '^':
+			return makeToken(TOKEN_XOR);
 		case '"':
 			return string();
 	}
@@ -345,31 +357,28 @@ const char* getTokenName(TokenType tokenType)
 		[TOKEN_BANG] = "TOKEN_BANG",
 		[TOKEN_BANG_EQUAL] = "TOKEN_BANG_EQUAL",
 		[TOKEN_EQUAL] = "TOKEN_EQUAL",
-		[TOKEN_EQUAL_EQUAL] = "TOKEN_EQUAL",
+		[TOKEN_EQUAL_EQUAL] = "TOKEN_EQUAL_EQUAL",
 		[TOKEN_GREATER] = "TOKEN_GREATER",
 		[TOKEN_GREATER_EQUAL] = "TOKEN_GREATER_EQUAL",
 		[TOKEN_LESS] = "TOKEN_LESS",
 		[TOKEN_LESS_EQUAL] = "TOKEN_LESS_EQUAL",
+		[TOKEN_SHIFT_LEFT] = "TOKEN_SHIFT_LEFT",
+		[TOKEN_SHIFT_RIGHT] = "TOKEN_SHIFT_RIGHT",
 		[TOKEN_DEC] = "TOKEN_DEC",
 		[TOKEN_IDENTIFIER] = "TOKEN_IDENTIFIER",
 		[TOKEN_STRING] = "TOKEN_STRING",
 		[TOKEN_NUMBER] = "TOKEN_NUMBER",
 		[TOKEN_AND] = "TOKEN_AND",
-		[TOKEN_CLASS] = "TOKEN_CLASS",
 		[TOKEN_ELSE] = "TOKEN_ELSE",
 		[TOKEN_FALSE] = "TOKEN_FALSE",
-		[TOKEN_FUN] = "TOKEN_FUN",
 		[TOKEN_FOR] = "TOKEN_FOR",
 		[TOKEN_IF] = "TOKEN_IF",
 		[TOKEN_INT] = "TOKEN_INT",
 		[TOKEN_OR] = "TOKEN_OR",
-		[TOKEN_PRINT] = "TOKEN_PRINT",
 		[TOKEN_RETURN] = "TOKEN_RETURN",
-		[TOKEN_SUPER] = "TOKEN_SUPER",
-		[TOKEN_THIS] = "TOKEN_THIS",
-		[TOKEN_TRUE] = "TOKEN_TRUE",
 		[TOKEN_VOID] = "TOKEN_VOID",
 		[TOKEN_WHILE] = "TOKEN_WHILE",
+		[TOKEN_XOR] = "TOKEN_XOR",
 		[TOKEN_ERROR] = "TOKEN_ERROR",
 		[TOKEN_EOF] = "TOKEN_EOF"
 	};
