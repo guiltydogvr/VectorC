@@ -103,6 +103,9 @@ void generateX64Function(FILE* outputFile, const Function* func)
 			case X64_ADD:
 				fprintf(outputFile, "    addl %s, %s\n", srcBuffer, dstBuffer);
 				break;
+			case X64_AND:
+				fprintf(outputFile, "    andl %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_CDQ:
 				fprintf(outputFile, "    cdq\n");
 				break;
@@ -122,14 +125,36 @@ void generateX64Function(FILE* outputFile, const Function* func)
 			case X64_NOT:
 				fprintf(outputFile, "    notl %s\n", srcBuffer);
 				break;
+			case X64_OR:
+				fprintf(outputFile, "    orl %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_RET:
 				// X86-64 epilogue
 				fprintf(outputFile, "    movq %%rbp, %%rsp\n");
 				fprintf(outputFile, "    popq %%rbp\n");
 				fprintf(outputFile, "    ret\n");
 				break;
+			case X64_SAR_CL: {
+				fprintf(outputFile, "    sarl %%cl, %s\n", dstBuffer);
+				break;
+			}
+			case X64_SAR_IMM: {
+				fprintf(outputFile, "    sarl %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			}
+			case X64_SHL_CL: {
+				fprintf(outputFile, "    shll %%cl, %s\n", dstBuffer);
+				break;
+			}
+			case X64_SHL_IMM: {
+				fprintf(outputFile, "    shll %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			}
 			case X64_SUB:
 				fprintf(outputFile, "    subl %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			case X64_XOR:
+				fprintf(outputFile, "    xorl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 		}
 	}
@@ -193,10 +218,14 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 					}));
 					break;
 				}
+#if 1
 				case TACKY_INSTR_BINARY: {
 					if (instr->binary.op == TACKY_ADD ||
 						instr->binary.op == TACKY_SUBTRACT ||
-						instr->binary.op == TACKY_MULTIPLY) {
+						instr->binary.op == TACKY_MULTIPLY ||
+						instr->binary.op == TACKY_BITWISE_AND ||
+						instr->binary.op == TACKY_BITWISE_OR ||
+						instr->binary.op == TACKY_BITWISE_XOR) {
 
 						Operand src0;
 						if (instr->binary.lhs.type == TACKY_VAL_CONSTANT) {
@@ -286,9 +315,141 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 							});
 							break;
 						}
+						case TACKY_BITWISE_AND:
+							emitX64(&x64Instructions, (X64Instruction){
+								.type = X64_AND,
+								.src = src1,
+								.dst = VAR(instr->binary.dst.varName),
+							});
+							break;
+						case TACKY_BITWISE_OR:
+							emitX64(&x64Instructions, (X64Instruction){
+								.type = X64_OR,
+								.src = src1,
+								.dst = VAR(instr->binary.dst.varName),
+							});
+							break;
+						case TACKY_BITWISE_XOR:
+							emitX64(&x64Instructions, (X64Instruction){
+								.type = X64_XOR,
+								.src = src1,
+								.dst = VAR(instr->binary.dst.varName),
+							});
+							break;
+						case TACKY_SHIFT_LEFT:
+						case TACKY_SHIFT_RIGHT: {
+							const char* dst = instr->binary.dst.varName;
+							const bool rhs_is_imm = (instr->binary.rhs.type == TACKY_VAL_CONSTANT);
+							// <<< INSERT THIS BLOCK >>>
+							Operand lhs = (instr->binary.lhs.type == TACKY_VAL_CONSTANT)
+								? IMM(instr->binary.lhs.constantValue)
+								: VAR(instr->binary.lhs.varName);
+							emitX64(&x64Instructions, (X64Instruction){
+								.type = X64_MOV,
+								.src  = lhs,
+								.dst  = VAR(dst),
+							});
+							// <<< THEN your imm/CL branches >>>
+							if (rhs_is_imm) {
+								emitX64(&x64Instructions, (X64Instruction){
+									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_IMM : X64_SAR_IMM,
+									.src  = IMM(instr->binary.rhs.constantValue),
+									.dst  = VAR(dst),
+								});
+							} else {
+								emitX64(&x64Instructions, (X64Instruction){
+									.type = X64_MOV,
+									.src  = VAR(instr->binary.rhs.varName),
+									.dst  = REG("%ecx"),
+								});
+								emitX64(&x64Instructions, (X64Instruction){
+									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_CL : X64_SAR_CL,
+									.dst  = VAR(dst), // CL implicit
+								});
+							}
+							break;
+						}					}
+					break;
+				}
+#else
+				case TACKY_INSTR_BINARY: {
+					const char* dst = instr->binary.dst.varName;
+
+					// 1) dst = lhs
+					Operand lhs = (instr->binary.lhs.type == TACKY_VAL_CONSTANT)
+						? IMM(instr->binary.lhs.constantValue)
+						: VAR(instr->binary.lhs.varName);
+
+					emitX64(&x64Instructions, (X64Instruction){
+						.type = X64_MOV,
+						.src  = lhs,
+						.dst  = VAR(dst),
+					});
+
+					// 2) Handle op
+					switch (instr->binary.op) {
+						// same shape as add/sub/mul
+						case TACKY_ADD:
+						case TACKY_SUBTRACT:
+						case TACKY_MULTIPLY:
+						case TACKY_BITWISE_AND:
+						case TACKY_BITWISE_OR:
+						case TACKY_BITWISE_XOR: {
+							X64InstructionType xop =
+								(instr->binary.op == TACKY_ADD)           ? X64_ADD :
+								(instr->binary.op == TACKY_SUBTRACT)      ? X64_SUB :
+								(instr->binary.op == TACKY_MULTIPLY)      ? X64_IMUL :
+								(instr->binary.op == TACKY_BITWISE_AND)   ? X64_AND :
+								(instr->binary.op == TACKY_BITWISE_OR)    ? X64_OR  :
+																			X64_XOR;
+
+							Operand rhs = (instr->binary.rhs.type == TACKY_VAL_CONSTANT)
+								? IMM(instr->binary.rhs.constantValue)
+								: VAR(instr->binary.rhs.varName);
+
+							emitX64(&x64Instructions, (X64Instruction){
+								.type = xop,
+								.src  = rhs,
+								.dst  = VAR(dst),
+							});
+							break;
+						}
+
+						// shifts need CL (variable) or imm form
+						case TACKY_SHIFT_LEFT:
+						case TACKY_SHIFT_RIGHT: {
+							const bool rhs_is_imm = (instr->binary.rhs.type == TACKY_VAL_CONSTANT);
+
+							if (rhs_is_imm) {
+								const int imm = instr->binary.rhs.constantValue; // HW masks anyway
+								emitX64(&x64Instructions, (X64Instruction){
+									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_IMM : X64_SAR_IMM, // signed int => SAR
+									.src  = IMM(imm),
+									.dst  = VAR(dst),
+								});
+							} else {
+								// count must be in CL (i.e., ECX low byte)
+								emitX64(&x64Instructions, (X64Instruction){
+									.type = X64_MOV,
+									.src  = VAR(instr->binary.rhs.varName),
+									.dst  = REG("%ecx"),
+								});
+								emitX64(&x64Instructions, (X64Instruction){
+									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_CL : X64_SAR_CL,
+									// CL is implicit; only provide dst
+									.dst  = VAR(dst),
+								});
+							}
+							break;
+						}
+
+						default:
+							// fall through to whatever else you already handle
+							break;
 					}
 					break;
 				}
+#endif
 				case TACKY_INSTR_RETURN: {
 					Operand srcOperand;
 					if (instr->ret.value.type == TACKY_VAL_CONSTANT) {
@@ -387,6 +548,9 @@ void fixupIllegalInstructionsX64(Program* asmProgram, Program* finalAsmProgram) 
 				case X64_ADD:
 				case X64_SUB:
 				case X64_IMUL:
+				case X64_AND:
+				case X64_OR:
+				case X64_XOR:
 					if (srcIsMem && dstIsMem) {
 						// <op> [mem], [mem] → fix via scratch
 						arrput(fixedInstructions, ((X64Instruction){
@@ -470,6 +634,11 @@ void printX64Function(const Function* function) {
 				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
 				printf("  addl %s, %s\n", srcBuffer, dstBuffer);
 				break;
+			case X64_AND:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  andl %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_CDQ:
 				printf("  cdq\n");
 				break;
@@ -496,13 +665,43 @@ void printX64Function(const Function* function) {
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 				printf("  notl %s\n", srcBuffer);
 				break;
+			case X64_OR:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  orl %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_RET:
 				printf("  ret\n");
 				break;
+			case X64_SAR_CL: {
+				getX64Operand(&instr->dst, dstBuffer, sizeof dstBuffer);
+				printf("  sarl %%cl, %s\n", dstBuffer);
+				break;
+			}
+			case X64_SAR_IMM: {
+				getX64Operand(&instr->dst, dstBuffer, sizeof dstBuffer);
+				printf("  sarl $%d, %s\n", instr->src.immValue, dstBuffer);
+				break;
+			}
+			case X64_SHL_CL: {
+				getX64Operand(&instr->dst, dstBuffer, sizeof dstBuffer);
+				printf("  shll %%cl, %s\n", dstBuffer);
+				break;
+			}
+			case X64_SHL_IMM: {
+				getX64Operand(&instr->dst, dstBuffer, sizeof dstBuffer);
+				printf("  shll $%d, %s\n", instr->src.immValue, dstBuffer);
+				break;
+			}
 			case X64_SUB:
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
 				printf("  subl %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			case X64_XOR:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  xorl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 			default:
 				printf("  Unknown instruction\n");

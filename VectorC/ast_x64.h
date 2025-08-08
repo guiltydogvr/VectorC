@@ -15,15 +15,25 @@
 // x64 instruction types
 typedef enum {
 	X64_ADD,
+	X64_AND,
 	X64_CDQ,
 	X64_IMUL,
 	X64_IDIV,
 	X64_MOV,
 	X64_NEG,
 	X64_NOT,
+	X64_OR,
 	X64_RET,
 	X64_SUB,
-	// Add more x64-specific instructions
+	X64_XOR,
+	// Shifts
+	X64_SHL_IMM, // shl $imm, r/m32
+	X64_SHL_CL,  // shl %cl, r/m32
+	X64_SAR_IMM, // sar $imm, r/m32 (signed >>)
+	X64_SAR_CL,  // sar %cl, r/m32 (signed >>)
+	// Later if you add unsigned >>:
+//	X64_SHR_IMM, // shr $imm, r/m32
+//	X64_SHR_CL   // shr %cl, r/m32
 } X64InstructionType;
 
 // x64 instruction structure
