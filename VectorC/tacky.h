@@ -26,7 +26,12 @@ typedef enum {
 	TACKY_SUBTRACT,
 	TACKY_MULTIPLY,
 	TACKY_DIVIDE,
-	TACKY_MODULO
+	TACKY_MODULO,
+	TACKY_BINARY_AND,     // bitwise &
+	TACKY_BINARY_OR,      // bitwise |
+	TACKY_BINARY_XOR,     // bitwise ^
+	TACKY_BINARY_SHL,     // <<
+	TACKY_BINARY_SHR,      // >>
 } TackyBinaryOperator;
 
 typedef enum {

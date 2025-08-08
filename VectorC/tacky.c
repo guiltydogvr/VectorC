@@ -70,6 +70,21 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 			case BINOP_MODULO:
 				op = TACKY_MODULO;
 				break;
+			case BINOP_BITWISE_AND:
+				op = TACKY_BINARY_AND;
+				break;
+			case BINOP_BITWISE_OR:
+				op = TACKY_BINARY_OR;
+				break;
+			case BINOP_BITWISE_XOR:
+				op = TACKY_BINARY_XOR;
+				break;
+			case BINOP_SHIFT_LEFT:
+				op = TACKY_BINARY_SHL;
+				break;
+			case BINOP_SHIFT_RIGHT:
+				op = TACKY_BINARY_SHR;
+				break;
 			default:
 				fprintf(stderr, "Unknown binary operator in TACKY generation\n");
 				exit(EXIT_FAILURE);
@@ -176,6 +191,21 @@ void printTackyProgram(const TackyProgram* program) {
 							break;
 						case TACKY_MODULO:
 							opString = "Modulo";
+							break;
+						case TACKY_BINARY_AND:
+							opString = "And";
+							break;
+						case TACKY_BINARY_OR:
+							opString = "Or";
+							break;
+						case TACKY_BINARY_XOR:
+							opString = "Xor";
+							break;
+						case TACKY_BINARY_SHL:
+							opString = "Shl";
+							break;
+						case TACKY_BINARY_SHR:
+							opString = "Shr";
 							break;
 					}
 					printf("        Binary(%s, ", opString);
