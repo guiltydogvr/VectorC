@@ -9,16 +9,23 @@
 static int currentFunctionTempCounter = 0;
 static const char* currentFunctionName = NULL;
 
+// Generate a unique temporary variable name for the current function.
+// Returns: pointer to newly allocated string.
 static const char* newTempVarName() {
-	char* name = malloc(32);
-	if (currentFunctionName) {
-		sprintf(name, "%s.tmp.%d", currentFunctionName, currentFunctionTempCounter++);
-	} else {
-		sprintf(name, "tmp.%d", currentFunctionTempCounter++);
-	}
-	return name;
+        char* name = malloc(32);
+        if (currentFunctionName) {
+                sprintf(name, "%s.tmp.%d", currentFunctionName, currentFunctionTempCounter++);
+        } else {
+                sprintf(name, "tmp.%d", currentFunctionTempCounter++);
+        }
+        return name;
 }
 
+// Recursively translate an AST expression into TACKY instructions, appending
+// results to the given function.
+// expr - AST expression node to translate.
+// func - function under construction receiving generated instructions.
+// Returns: TackyValue representing the location of the expression's result.
 static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction* func) {
 	if (!expr) {
 		fprintf(stderr, "Null expression node encountered\n");
@@ -106,53 +113,58 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 	else {
 		fprintf(stderr, "Unsupported expression type in TACKY generation\n");
 		exit(EXIT_FAILURE);
-	}
+        }
 }
 
+// Build a TackyProgram from the high-level AST.
+// ast - root of the AST produced by the parser.
+// Returns: dynamically allocated TackyProgram structure.
 TackyProgram* generateTackyFromAst(const ProgramNode* ast) {
-	if (!ast) return NULL;
+        if (!ast) return NULL;
 
-	TackyProgram* program = (TackyProgram*)malloc(sizeof(TackyProgram));
-	program->functions = NULL;
+        TackyProgram* program = (TackyProgram*)malloc(sizeof(TackyProgram));
+        program->functions = NULL;
 
-	for (FunctionNode* funcNode = ast->function; funcNode != NULL; funcNode = funcNode->next) {
-		currentFunctionName = funcNode->name;
-		currentFunctionTempCounter = 0;
-		TackyFunction func = {0};
-		func.name = funcNode->name;
-		func.instructions = NULL;
-		
-		if (funcNode->body && funcNode->body->type == STMT_RETURN) {
-			ExpressionNode* returnExpr = funcNode->body->expr;
+        for (FunctionNode* funcNode = ast->function; funcNode != NULL; funcNode = funcNode->next) {
+                currentFunctionName = funcNode->name;
+                currentFunctionTempCounter = 0;
+                TackyFunction func = {0};
+                func.name = funcNode->name;
+                func.instructions = NULL;
 
-			TackyValue retVal = translateExpression(returnExpr, &func);
+                if (funcNode->body && funcNode->body->type == STMT_RETURN) {
+                        ExpressionNode* returnExpr = funcNode->body->expr;
 
-			TackyInstruction retInstr = {
-				.type = TACKY_INSTR_RETURN,
-				.ret = { .value = retVal }
-			};
-			arrput(func.instructions, retInstr);
-		}
+                        TackyValue retVal = translateExpression(returnExpr, &func);
 
-		arrput(program->functions, func);
-	}
+                        TackyInstruction retInstr = {
+                                .type = TACKY_INSTR_RETURN,
+                                .ret = { .value = retVal }
+                        };
+                        arrput(func.instructions, retInstr);
+                }
 
-	return program;
+                arrput(program->functions, func);
+        }
+
+        return program;
 }
 
+// Pretty-print a TackyProgram for debugging purposes.
+// program - program to display.
 void printTackyProgram(const TackyProgram* program) {
-	if (!program) {
-		printf("TackyProgram(NULL)\n");
-		return;
-	}
+        if (!program) {
+                printf("TackyProgram(NULL)\n");
+                return;
+        }
 
-	printf("TackyProgram(\n");
-	for (size_t i = 0; i < arrlenu(program->functions); ++i) {
-		const TackyFunction* func = &program->functions[i];
-		printf("    Function(name=%s\n", func->name);
-		for (size_t j = 0; j < arrlenu(func->instructions); ++j) {
-			const TackyInstruction* instr = &func->instructions[j];
-			switch (instr->type) {
+        printf("TackyProgram(\n");
+        for (size_t i = 0; i < arrlenu(program->functions); ++i) {
+                const TackyFunction* func = &program->functions[i];
+                printf("    Function(name=%s\n", func->name);
+                for (size_t j = 0; j < arrlenu(func->instructions); ++j) {
+                        const TackyInstruction* instr = &func->instructions[j];
+                        switch (instr->type) {
 				case TACKY_INSTR_RETURN:
 					printf("        Return(");
 					if (instr->ret.value.type == TACKY_VAL_CONSTANT)

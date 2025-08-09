@@ -20,6 +20,17 @@ Lexer lexer;
 
 static TrieNode* s_keywordsTrie = NULL;
 
+//
+// initLexer
+// ---------
+// Prepare the lexer to scan a new source string.
+//
+// Parameters:
+//   source - Null-terminated source code to lex.
+//
+// Returns:
+//   None.
+//
 void initLexer(const char* source) {
 	lexer.start = source;
 	lexer.current = source;
@@ -90,186 +101,242 @@ void initLexer(const char* source) {
 	printf("End Trie Test\n");
 }
 
+//
+// destroyLexer
+// ------------
+// Release resources associated with the lexer.
+//
+// Parameters: none
+// Returns:    none
+//
 void destroyLexer(void) {
-	freeTrie(s_keywordsTrie);
+        freeTrie(s_keywordsTrie);
 }
 
+// Check whether a character is alphabetic or underscore.
+//
+// c - Character to test.
+// Returns: true if the character is a letter or underscore.
 static bool isAlpha(char c) {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
+// Determine if a character represents a decimal digit.
+//
+// c - Character to test.
+// Returns: true if c is between '0' and '9'.
 static bool isDigit(char c) {
-	return c >= '0' && c <= '9';
+        return c >= '0' && c <= '9';
 }
 
+// Check if the lexer has reached end of input.
+//
+// Returns: true if there is no more source to read.
 static bool isAtEnd(void) {
-	return *lexer.current == '\0';
+        return *lexer.current == '\0';
 }
 
+// Consume the next character in the source stream.
+//
+// Returns: the consumed character.
 static char advance(void) {
-	lexer.current++;
-	return lexer.current[-1];
+        lexer.current++;
+        return lexer.current[-1];
 }
 
+// Look at the current character without consuming it.
+//
+// Returns: current character.
 static char peek(void) {
-	return *lexer.current;
+        return *lexer.current;
 }
 
+// Peek one character ahead without consuming it.
+//
+// Returns: next character, or '\0' if at end of input.
 static char peekNext(void) {
-	if (isAtEnd()) {
-		return '\0';
-	}
-	return lexer.current[1];
+        if (isAtEnd()) {
+                return '\0';
+        }
+        return lexer.current[1];
 }
 
+// Try to consume the next character if it matches the expected one.
+//
+// expected - Character to match.
+// Returns: true if the character was consumed, false otherwise.
 static bool match(char expected) {
-	if (isAtEnd()) {
-		return false;
-	}
-	
-	if (*lexer.current != expected) {
-		return false;
-	}
-	lexer.current++;
-	return true;
+        if (isAtEnd()) {
+                return false;
+        }
+
+        if (*lexer.current != expected) {
+                return false;
+        }
+        lexer.current++;
+        return true;
 }
 
+// Build a generic token using the current lexeme boundaries.
+//
+// type - Token type to assign.
+// Returns: populated token structure.
 static Token makeToken(TokenType type) {
-	Token token;
-	token.type = type;
-	token.start = lexer.start;
-	token.length = (int32_t)(lexer.current - lexer.start);
-	token.line = lexer.line;
-	return token;
+        Token token;
+        token.type = type;
+        token.start = lexer.start;
+        token.length = (int32_t)(lexer.current - lexer.start);
+        token.line = lexer.line;
+        return token;
 }
 
+// Create a token representing an integer literal.
+//
+// type  - Token type (e.g., TOKEN_NUMBER).
+// value - Numeric value of the literal.
+// Returns: populated token with integer value stored.
 static Token makeNumberToken(TokenType type, int32_t value) {
-	Token token;
-	token.type = type;
-	token.start = lexer.start;
-	token.length = (int32_t)(lexer.current - lexer.start);
-	token.line = lexer.line;
-	token.value.intValue = value;
-	return token;
+        Token token;
+        token.type = type;
+        token.start = lexer.start;
+        token.length = (int32_t)(lexer.current - lexer.start);
+        token.line = lexer.line;
+        token.value.intValue = value;
+        return token;
 }
 
+// Helper used by generic macros for creating integer tokens.
+// lexeme is unused but kept for symmetry with makeDoubleToken.
 Token makeIntToken(TokenType type, const char* lexeme, int value) {
-	Token token;
-	token.type = type;
-	token.start = lexer.start;
-	token.length = (int32_t)(lexer.current - lexer.start);
-	token.line = lexer.line;
-	token.value.intValue = value;
-	return token;
+        Token token;
+        token.type = type;
+        token.start = lexer.start;
+        token.length = (int32_t)(lexer.current - lexer.start);
+        token.line = lexer.line;
+        token.value.intValue = value;
+        return token;
 }
 
+// Helper used by generic macros for creating double tokens.
 Token makeDoubleToken(TokenType type, const char* lexeme, double value) {
-	Token token;
-	token.type = type;
-	token.start = lexer.start;
-	token.length = (int32_t)(lexer.current - lexer.start);
-	token.line = lexer.line;
-	token.value.doubleValue = value;
-	return token;
+        Token token;
+        token.type = type;
+        token.start = lexer.start;
+        token.length = (int32_t)(lexer.current - lexer.start);
+        token.line = lexer.line;
+        token.value.doubleValue = value;
+        return token;
 }
 
 // Generic macro for creating tokens
 #define makeConstantToken(type, lexeme, value) \
-	_Generic((value), \
-		int: makeIntToken, \
-		double: makeDoubleToken \
-	)(type, lexeme, value)
+        _Generic((value), \
+                int: makeIntToken, \
+                double: makeDoubleToken \
+        )(type, lexeme, value)
 
+// Construct an error token containing the provided message.
+// message - Error description.
+// Returns: token of type TOKEN_ERROR.
 static Token errorToken(const char* message) {
-	Token token;
-	token.type = TOKEN_ERROR;
-	token.start = message;
-	token.length = (int32_t)strlen(message);
-	token.line = lexer.line;
-	return token;
+        Token token;
+        token.type = TOKEN_ERROR;
+        token.start = message;
+        token.length = (int32_t)strlen(message);
+        token.line = lexer.line;
+        return token;
 }
 
+// Skip over whitespace and comments.
+// Returns: none.
 static void skipWhitespace(void) {
-	for (;;) {
-		char c = peek();
-		switch (c) {
-			case ' ':
-			case '\r':
-			case '\t':
-				advance();
-				break;
-			case '\n':
-				lexer.line++;
-				advance();
-				break;
-			case '/':
-				if (peekNext() == '/') {
-					// A comment goes until the end of the line.
-					while(peek() != '\n' && !isAtEnd()) {
-						advance();
-					}
-				} else {
-					return;
-				}
-				break;
-			default:
-				return;
-		}
-	}
+        for (;;) {
+                char c = peek();
+                switch (c) {
+                        case ' ':
+                        case '\r':
+                        case '\t':
+                                advance();
+                                break;
+                        case '\n':
+                                lexer.line++;
+                                advance();
+                                break;
+                        case '/':
+                                if (peekNext() == '/') {
+                                        // A comment goes until the end of the line.
+                                        while(peek() != '\n' && !isAtEnd()) {
+                                                advance();
+                                        }
+                                } else {
+                                        return;
+                                }
+                                break;
+                        default:
+                                return;
+                }
+        }
 }
 
+// Determine whether the identifier under construction is a keyword and return
+// its corresponding TokenType.
 static TokenType identifierType(void) {
-	size_t len = lexer.current - lexer.start;
-	char keyword[len+1];
-	strncpy(keyword, lexer.start, len);
-	keyword[len] = '\0';
-	
-	return trieSearch(s_keywordsTrie, keyword);
+        size_t len = lexer.current - lexer.start;
+        char keyword[len+1];
+        strncpy(keyword, lexer.start, len);
+        keyword[len] = '\0';
+
+        return trieSearch(s_keywordsTrie, keyword);
 }
 
+// Consume a sequence of alphanumeric characters and produce an identifier token.
 static Token identifier(void) {
-	while (isAlpha(peek()) || isDigit(peek())) {
-		advance();
-	}
-	return makeToken(identifierType());
+        while (isAlpha(peek()) || isDigit(peek())) {
+                advance();
+        }
+        return makeToken(identifierType());
 }
 
+// Parse digits into a number token. Rejects identifiers starting with digits.
 static Token number(void) {
-	const char* start = lexer.start;
+        const char* start = lexer.start;
 
-	while (isDigit(peek())) advance();
+        while (isDigit(peek())) advance();
 
-	// 🚩 New check here
-	if (isAlpha(peek())) {
-		return errorToken("Invalid identifier: cannot start with a digit.");
-	}
+        // 🚩 New check here
+        if (isAlpha(peek())) {
+                return errorToken("Invalid identifier: cannot start with a digit.");
+        }
 
-	int len = (int)(lexer.current - start);
-	char numStr[len + 1];
-	strncpy(numStr, start, len);
-	numStr[len] = '\0';
+        int len = (int)(lexer.current - start);
+        char numStr[len + 1];
+        strncpy(numStr, start, len);
+        numStr[len] = '\0';
 
-	int value = atoi(numStr);
-	return makeNumberToken(TOKEN_NUMBER, value);
+        int value = atoi(numStr);
+        return makeNumberToken(TOKEN_NUMBER, value);
 }
 
+// Parse a double quoted string literal.
 static Token string(void) {
-	while (peek() != '"' && !isAtEnd()) {
-		if (peek() == '\n') {
-			lexer.line++;
-		}
-		advance();
-	}
-	
-	if (isAtEnd()) {
-		return errorToken("Unterminated string.");
-	}
-	
-	// The closing quote.
-	advance();
-	return makeToken(TOKEN_STRING);
+        while (peek() != '"' && !isAtEnd()) {
+                if (peek() == '\n') {
+                        lexer.line++;
+                }
+                advance();
+        }
+
+        if (isAtEnd()) {
+                return errorToken("Unterminated string.");
+        }
+
+        // The closing quote.
+        advance();
+        return makeToken(TOKEN_STRING);
 }
 
+// Public interface to scan a single token from the source.
+// Advances the lexer and returns the next token in the stream.
 Token scanToken(void) {
 	skipWhitespace();
 	lexer.start = lexer.current;
@@ -338,6 +405,9 @@ Token scanToken(void) {
 	return errorToken("Unexpected character.");
 }
 
+// Convert a TokenType to a human readable string.
+// tokenType - token enumeration to describe.
+// Returns: string literal name of the token.
 const char* getTokenName(TokenType tokenType)
 {
 	static const char* s_tokenNames[] = {
@@ -387,6 +457,8 @@ const char* getTokenName(TokenType tokenType)
 	return s_tokenNames[tokenType];
 }
 
+// Scan the entire source returning an array of tokens terminated by TOKEN_EOF.
+// Returns: stb_ds dynamic array containing all tokens.
 const Token* scanTokens(void)
 {
 	Token* tokens = NULL;

@@ -100,7 +100,10 @@ typedef struct {
     TackyFunction* functions;  // stb_ds dynamic array
 } TackyProgram;
 
+// Convert a high-level AST into TACKY intermediate representation.
 TackyProgram* generateTackyFromAst(const ProgramNode* ast);
+
+// Print a human-readable representation of a TACKY program.
 void printTackyProgram(const TackyProgram* program);
 
 #endif // TACKY_H

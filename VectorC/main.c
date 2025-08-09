@@ -18,6 +18,18 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
+//
+// readFile
+// ---------
+// Load an entire file into a heap allocated buffer.
+//
+// Parameters:
+//   path - Path to the file to read.
+//
+// Returns:
+//   Pointer to a null-terminated string containing the file's contents.
+//   The caller is responsible for freeing the returned buffer.
+//
 static char* readFile(const char * path) {
 	FILE* file = fopen(path, "rb");
 	if (file == NULL) {
@@ -44,6 +56,21 @@ static char* readFile(const char * path) {
 	return buffer;
 }
 
+//
+// main
+// ----
+// Entry point for the VectorC compiler driver.  It interprets command line
+// switches to run individual compilation stages (lexing, parsing, tacky IR and
+// code generation) and invokes each phase in order.  Intermediate results can
+// be printed when the corresponding flag is supplied.
+//
+// Parameters:
+//   argc - Number of command line arguments.
+//   argv - Array of argument strings.
+//
+// Returns:
+//   EXIT_SUCCESS on success, or EXIT_FAILURE if an error occurs.
+//
 int main(int argc, const char * argv[]) {
 	// insert code here...
 	bool bLex = false, bParse = false, bTacky = false, bCodegen = false, bVerbose = false;
