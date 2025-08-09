@@ -218,238 +218,92 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 					}));
 					break;
 				}
-#if 1
 				case TACKY_INSTR_BINARY: {
-					if (instr->binary.op == TACKY_ADD ||
-						instr->binary.op == TACKY_SUBTRACT ||
-						instr->binary.op == TACKY_MULTIPLY ||
-						instr->binary.op == TACKY_BITWISE_AND ||
-						instr->binary.op == TACKY_BITWISE_OR ||
-						instr->binary.op == TACKY_BITWISE_XOR) {
+					const TackyBinaryOperator op = instr->binary.op;
 
-						Operand src0;
-						if (instr->binary.lhs.type == TACKY_VAL_CONSTANT) {
-							src0 = IMM(instr->binary.lhs.constantValue);
-						} else {
-							src0 = VAR(instr->binary.lhs.varName);
-						}
-						
-						emitX64(&x64Instructions, ((X64Instruction) {
+					// --- Special-case: DIV/MOD need EAX/EDX + CDQ + IDIV ---
+					if (op == TACKY_DIVIDE || op == TACKY_MODULO) {
+						// LHS -> %eax (dividend low 32)
+						Operand lhs = (instr->binary.lhs.type == TACKY_VAL_CONSTANT)
+							? IMM(instr->binary.lhs.constantValue)
+							: VAR(instr->binary.lhs.varName);
+
+						emitX64(&x64Instructions, (X64Instruction){
+							.type = X64_MOV, .src = lhs, .dst = REG("%eax")
+						});
+
+						// Sign-extend EAX into EDX (so EDX:EAX is the dividend)
+						emitX64(&x64Instructions, (X64Instruction){ .type = X64_CDQ });
+
+						// Divisor can be imm or var; your Pass 3 already fixes imm->reg for IDIV
+						Operand rhs = (instr->binary.rhs.type == TACKY_VAL_CONSTANT)
+							? IMM(instr->binary.rhs.constantValue)
+							: VAR(instr->binary.rhs.varName);
+
+						emitX64(&x64Instructions, (X64Instruction){
+							.type = X64_IDIV, .src = rhs
+						});
+
+						// Store result: quotient -> EAX for DIV, remainder -> EDX for MOD
+						emitX64(&x64Instructions, (X64Instruction){
 							.type = X64_MOV,
-							.src = src0,
-							//						.dst = REG("%eax"),
-							.dst = VAR(instr->binary.dst.varName),
-						}));
-					}
-					
-					Operand src1;
-					if (instr->binary.rhs.type == TACKY_VAL_CONSTANT) {
-						src1 = IMM(instr->binary.rhs.constantValue);
-					} else {
-						src1 = VAR(instr->binary.rhs.varName);
+							.src  = (op == TACKY_DIVIDE) ? REG("%eax") : REG("%edx"),
+							.dst  = VAR(instr->binary.dst.varName),
+						});
+						break; // done with DIV/MOD
 					}
 
-					switch (instr->binary.op) {
-						case TACKY_ADD:
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_ADD,
-								.src = src1,
-								.dst = VAR(instr->binary.dst.varName),
-							});
-							break;
-
-						case TACKY_SUBTRACT:
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_SUB,
-								.src = src1,
-								.dst = VAR(instr->binary.dst.varName),
-							});
-							break;
-
-						case TACKY_MULTIPLY:
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_IMUL,
-								.src = src1,
-								.dst = VAR(instr->binary.dst.varName),
-							});
-							break;
-
-						case TACKY_DIVIDE:
-						case TACKY_MODULO:
-						{
-							// LHS must be in %eax
-							Operand src0;
-							if (instr->binary.lhs.type == TACKY_VAL_CONSTANT) {
-								src0 = IMM(instr->binary.lhs.constantValue);
-							} else {
-								src0 = VAR(instr->binary.lhs.varName);
-							}
-							emitX64(&x64Instructions, ((X64Instruction) {
-								.type = X64_MOV,
-								.src = src0,
-								.dst = REG("%eax"),
-							}));
-							
-							// Sign-extend %eax into %edx
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_CDQ
-							});
-							
-							Operand src1;
-							if (instr->binary.rhs.type == TACKY_VAL_CONSTANT) {
-								src1 = IMM(instr->binary.rhs.constantValue);
-							} else {
-								src1 = VAR(instr->binary.rhs.varName);
-							}
-							// Perform signed division: edx:eax / rhs
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_IDIV,
-								.src = src1,
-							});
-							
-							// Store result
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_MOV,
-								.src = (instr->binary.op == TACKY_DIVIDE) ? REG("%eax") : REG("%edx"),
-								.dst = VAR(instr->binary.dst.varName),
-							});
-							break;
-						}
-						case TACKY_BITWISE_AND:
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_AND,
-								.src = src1,
-								.dst = VAR(instr->binary.dst.varName),
-							});
-							break;
-						case TACKY_BITWISE_OR:
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_OR,
-								.src = src1,
-								.dst = VAR(instr->binary.dst.varName),
-							});
-							break;
-						case TACKY_BITWISE_XOR:
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_XOR,
-								.src = src1,
-								.dst = VAR(instr->binary.dst.varName),
-							});
-							break;
-						case TACKY_SHIFT_LEFT:
-						case TACKY_SHIFT_RIGHT: {
-							const char* dst = instr->binary.dst.varName;
-							const bool rhs_is_imm = (instr->binary.rhs.type == TACKY_VAL_CONSTANT);
-							// <<< INSERT THIS BLOCK >>>
-							Operand lhs = (instr->binary.lhs.type == TACKY_VAL_CONSTANT)
-								? IMM(instr->binary.lhs.constantValue)
-								: VAR(instr->binary.lhs.varName);
-							emitX64(&x64Instructions, (X64Instruction){
-								.type = X64_MOV,
-								.src  = lhs,
-								.dst  = VAR(dst),
-							});
-							// <<< THEN your imm/CL branches >>>
-							if (rhs_is_imm) {
-								emitX64(&x64Instructions, (X64Instruction){
-									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_IMM : X64_SAR_IMM,
-									.src  = IMM(instr->binary.rhs.constantValue),
-									.dst  = VAR(dst),
-								});
-							} else {
-								emitX64(&x64Instructions, (X64Instruction){
-									.type = X64_MOV,
-									.src  = VAR(instr->binary.rhs.varName),
-									.dst  = REG("%ecx"),
-								});
-								emitX64(&x64Instructions, (X64Instruction){
-									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_CL : X64_SAR_CL,
-									.dst  = VAR(dst), // CL implicit
-								});
-							}
-							break;
-						}					}
-					break;
-				}
-#else
-				case TACKY_INSTR_BINARY: {
+					// --- Generic path: dst = lhs; then apply op with rhs (covers & | ^ << >> and + - *) ---
 					const char* dst = instr->binary.dst.varName;
 
-					// 1) dst = lhs
 					Operand lhs = (instr->binary.lhs.type == TACKY_VAL_CONSTANT)
 						? IMM(instr->binary.lhs.constantValue)
 						: VAR(instr->binary.lhs.varName);
 
+					// 1) dst = lhs
 					emitX64(&x64Instructions, (X64Instruction){
-						.type = X64_MOV,
-						.src  = lhs,
-						.dst  = VAR(dst),
+						.type = X64_MOV, .src = lhs, .dst = VAR(dst)
 					});
 
-					// 2) Handle op
-					switch (instr->binary.op) {
-						// same shape as add/sub/mul
-						case TACKY_ADD:
-						case TACKY_SUBTRACT:
-						case TACKY_MULTIPLY:
-						case TACKY_BITWISE_AND:
-						case TACKY_BITWISE_OR:
-						case TACKY_BITWISE_XOR: {
-							X64InstructionType xop =
-								(instr->binary.op == TACKY_ADD)           ? X64_ADD :
-								(instr->binary.op == TACKY_SUBTRACT)      ? X64_SUB :
-								(instr->binary.op == TACKY_MULTIPLY)      ? X64_IMUL :
-								(instr->binary.op == TACKY_BITWISE_AND)   ? X64_AND :
-								(instr->binary.op == TACKY_BITWISE_OR)    ? X64_OR  :
-																			X64_XOR;
-
-							Operand rhs = (instr->binary.rhs.type == TACKY_VAL_CONSTANT)
-								? IMM(instr->binary.rhs.constantValue)
-								: VAR(instr->binary.rhs.varName);
-
+					// 2) Apply the operation
+					if (op == TACKY_SHIFT_LEFT || op == TACKY_SHIFT_RIGHT) {
+						const bool rhs_is_imm = (instr->binary.rhs.type == TACKY_VAL_CONSTANT);
+						if (rhs_is_imm) {
 							emitX64(&x64Instructions, (X64Instruction){
-								.type = xop,
-								.src  = rhs,
+								.type = (op == TACKY_SHIFT_LEFT) ? X64_SHL_IMM : X64_SAR_IMM, // signed int => SAR
+								.src  = IMM(instr->binary.rhs.constantValue),
 								.dst  = VAR(dst),
 							});
-							break;
+						} else {
+							emitX64(&x64Instructions, (X64Instruction){
+								.type = X64_MOV,
+								.src  = VAR(instr->binary.rhs.varName),
+								.dst  = REG("%ecx"), // CL
+							});
+							emitX64(&x64Instructions, (X64Instruction){
+								.type = (op == TACKY_SHIFT_LEFT) ? X64_SHL_CL : X64_SAR_CL,
+								.dst  = VAR(dst), // CL is implicit
+							});
 						}
+					} else {
+						X64InstructionType xop =
+							(op == TACKY_ADD)           ? X64_ADD :
+							(op == TACKY_SUBTRACT)      ? X64_SUB :
+							(op == TACKY_MULTIPLY)      ? X64_IMUL :
+							(op == TACKY_BITWISE_AND)   ? X64_AND :
+							(op == TACKY_BITWISE_OR)    ? X64_OR  :
+							/* TACKY_BITWISE_XOR */       X64_XOR;
 
-						// shifts need CL (variable) or imm form
-						case TACKY_SHIFT_LEFT:
-						case TACKY_SHIFT_RIGHT: {
-							const bool rhs_is_imm = (instr->binary.rhs.type == TACKY_VAL_CONSTANT);
+						Operand rhs = (instr->binary.rhs.type == TACKY_VAL_CONSTANT)
+							? IMM(instr->binary.rhs.constantValue)
+							: VAR(instr->binary.rhs.varName);
 
-							if (rhs_is_imm) {
-								const int imm = instr->binary.rhs.constantValue; // HW masks anyway
-								emitX64(&x64Instructions, (X64Instruction){
-									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_IMM : X64_SAR_IMM, // signed int => SAR
-									.src  = IMM(imm),
-									.dst  = VAR(dst),
-								});
-							} else {
-								// count must be in CL (i.e., ECX low byte)
-								emitX64(&x64Instructions, (X64Instruction){
-									.type = X64_MOV,
-									.src  = VAR(instr->binary.rhs.varName),
-									.dst  = REG("%ecx"),
-								});
-								emitX64(&x64Instructions, (X64Instruction){
-									.type = (instr->binary.op == TACKY_SHIFT_LEFT) ? X64_SHL_CL : X64_SAR_CL,
-									// CL is implicit; only provide dst
-									.dst  = VAR(dst),
-								});
-							}
-							break;
-						}
-
-						default:
-							// fall through to whatever else you already handle
-							break;
+						emitX64(&x64Instructions, (X64Instruction){
+							.type = xop, .src = rhs, .dst = VAR(dst)
+						});
 					}
 					break;
 				}
-#endif
 				case TACKY_INSTR_RETURN: {
 					Operand srcOperand;
 					if (instr->ret.value.type == TACKY_VAL_CONSTANT) {
