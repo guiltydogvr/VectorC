@@ -9,19 +9,25 @@
 #include "token.h"
 #include "stb_ds.h"
 
-// Get the current token
+// Return a pointer to the current token in the stream.
+// parser - parser state tracking the token array and index.
+// Returns: pointer to current Token.
 static const Token* currentToken(Parser* parser) {
 	return &parser->tokens[parser->current];
 }
 
-// Advance to the next token
+// Move to the next token if not already at EOF.
+// parser - parser state to advance.
 static void advance(Parser* parser) {
 	if (currentToken(parser)->type != TOKEN_EOF) {
 		parser->current++;
 	}
 }
 
-// Check if the current token matches a type
+// Consume a token of the given type if present.
+// parser - parser state.
+// type   - token type to match.
+// Returns: 1 if the token was consumed, 0 otherwise.
 static int match(Parser* parser, TokenType type) {
 	if (currentToken(parser)->type == type) {
 		advance(parser);
@@ -30,6 +36,9 @@ static int match(Parser* parser, TokenType type) {
 	return 0;
 }
 /*
+// Get operator precedence for a token type. Higher numbers bind more tightly.
+// type - token to query.
+// Returns: integer precedence value, or 0 if not an operator.
 static int getPrecedence(TokenType type) {
 	switch (type) {
 		case TOKEN_STAR:
@@ -79,10 +88,16 @@ static int getPrecedence(TokenType type) {
 	}
 }
 
+// Determine if a token represents a binary operator.
+// Returns: non-zero if token has defined precedence.
 static int isBinaryOperator(TokenType type) {
 	return getPrecedence(type) > 0;
 }
 
+// Parse an expression using precedence climbing.
+// parser - parser state.
+// minPrec - minimum precedence level to parse.
+// Returns: AST node representing the expression.
 ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 	ExpressionNode* left = NULL;
 
@@ -157,6 +172,8 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 	return left;
 }
 
+// Parse the smallest units of expressions (numbers, grouped or unary ops).
+// Returns: AST node representing the factor.
 ExpressionNode* parseFactor(Parser* parser) {
 	if (match(parser, TOKEN_LEFT_PAREN)) {  // Handle grouped expressions
 		ExpressionNode* expr = parseExpression(parser, 0);  // Parse inside parentheses
@@ -183,6 +200,8 @@ ExpressionNode* parseFactor(Parser* parser) {
 	exit(EXIT_FAILURE);
 }
 
+// Parse a single statement such as a return statement.
+// Returns: AST node for the parsed statement.
 StatementNode* parseStatement(Parser* parser) {
 	if (match(parser, TOKEN_RETURN)) {
 		ExpressionNode* expr = parseExpression(parser, 0);
@@ -196,6 +215,8 @@ StatementNode* parseStatement(Parser* parser) {
 	exit(EXIT_FAILURE);
 }
 
+// Parse a block of statements delimited by braces.
+// Returns: pointer to first statement node or NULL if block is empty.
 StatementNode* parseStatementList(Parser* parser) {
 	if (match(parser, TOKEN_RIGHT_BRACE)) {
 		return NULL; // Empty statement list, but now we properly consume the '}'
@@ -206,6 +227,8 @@ StatementNode* parseStatementList(Parser* parser) {
 	return stmt;
 }
 
+// Parse a function definition including its body.
+// Returns: newly allocated FunctionNode.
 FunctionNode* parseFunction(Parser* parser) {
 	if (!match(parser, TOKEN_INT) && !match(parser, TOKEN_VOID)) {
 		printf("Error: Expected return type ('int' or 'void').\n");
@@ -253,6 +276,9 @@ FunctionNode* parseFunction(Parser* parser) {
 	return createFunctionNode(functionName, body);
 }
 
+// Parse an entire program consisting of multiple function definitions.
+// parser - parser state.
+// Returns: ProgramNode representing all parsed functions.
 ProgramNode* parseProgram(Parser* parser) {
 	ProgramNode* program = NULL;
 	FunctionNode* lastFunction = NULL;
@@ -276,14 +302,16 @@ ProgramNode* parseProgram(Parser* parser) {
 			}
 
 			// Unexpected token error
-			printf("Error: Unexpected token '%.*s' (type: %d) at top level.\n",
-				   (int)currentToken(parser)->length, currentToken(parser)->start, currentToken(parser)->type);
+			printf("Error: Unexpected token '%.*s' (type: %d) at top level.\n", (int)currentToken(parser)->length, currentToken(parser)->start, currentToken(parser)->type);
 			exit(EXIT_FAILURE);
 		}
 	}
 	return program;
 }
 
+// Convenience entry point: parse a program from an array of tokens.
+// tokens - array produced by the lexer.
+// Returns: ProgramNode for the entire input.
 ProgramNode* parseProgramTokens(const Token* tokens) {
 	Parser parser = {tokens, 0};
 	return parseProgram(&parser);
