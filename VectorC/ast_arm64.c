@@ -8,6 +8,7 @@
 #include "ast_arm64.h"
 #include "stb_ds.h"
 #include "tacky.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -36,17 +37,6 @@ const char* getARM64Operand(const Operand* op, char* buffer, size_t bufferSize) 
 
 static TmpMapping* s_tmpMappings = NULL;
 
-static int getStackOffsetForTmp(const char* tmpName) {
-	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
-		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
-			return s_tmpMappings[i].stackOffset;
-		}
-	}
-	// Should never happen in well formed code
-	fprintf(stderr, "Unknown tmp variable: %s\n", tmpName);
-	exit(EXIT_FAILURE);
-}
-
 static int s_nextOffset = -16; // global or passed in
 
 int getOrAssignStackOffsetARM64(const char* tmpName) {
@@ -65,6 +55,36 @@ int getOrAssignStackOffsetARM64(const char* tmpName) {
 	return assigned;
 }
 
+
+const char* getARM64InstructionName(ARM64InstructionType type)
+{
+	static const char* s_instructionNames[] = {
+		[ARM64_ADD] = "add",
+		[ARM64_AND] = "and",
+		[ARM64_EOR] = "eor",
+		[ARM64_MUL] = "mul",
+		[ARM64_SDIV] = "sdiv",
+		[ARM64_LDR] = "ldr",
+		[ARM64_MOV] = "mov",
+		[ARM64_MVN] = "mvn",
+		[ARM64_NEG] = "neg",
+		[ARM64_ORR] = "orr",
+		[ARM64_RET] = "ret",
+		[ARM64_STR] = "str",
+		[ARM64_SUB] = "sub",
+		// Shifts (immediate)
+		[ARM64_LSL] = "lsl",   // lsl wd, wn, #imm
+		[ARM64_ASR] = "asr",   // asr wd, wn, #imm
+		// Shifts (variable)
+		[ARM64_LSLV] = "lslv",  // lslv wd, wn, wm
+		[ARM64_ASRV] = "asrv",  // asrv wd, wn, wm
+
+	};
+
+	static_assert(sizeof(s_instructionNames) / sizeof(const char*) == (int32_t)ARM64_RET+1, "Invalid Instruction");
+	return s_instructionNames[type];
+}
+
 //---------------------------------------------------------
 // ARM64 CODEGEN
 //---------------------------------------------------------
@@ -79,12 +99,14 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 		fprintf(outputFile, "%s:\n", func->name);
 	}
 
+	int bytesToAllocate = alignTo(-s_nextOffset, 16);
+
 	// ARM64 prologue
 	// Typically: Save x29 (frame pointer) and x30 (link register)
 	fprintf(outputFile, "    stp x29, x30, [sp, -16]!\n");
 	fprintf(outputFile, "    mov x29, sp\n");
 	// Reserve local stack space if needed:
-	// fprintf(outputFile, "    sub sp, sp, #16\n");
+	fprintf(outputFile, "    sub sp, sp, #%d\n", bytesToAllocate);
 
 	// Emit instructions
 	const ARM64Instruction* instructions = (const ARM64Instruction*)func->instructions;
@@ -95,19 +117,27 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 		getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 		getARM64Operand(&instr->src1, src1Buffer, sizeof(src1Buffer));
 		getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
-
+		const char* instructionName = getARM64InstructionName(instr->type);
 		switch (instr->type) {
 			case ARM64_ADD:
-				fprintf(outputFile, "    add %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
-				break;
+			case ARM64_AND:
+			case ARM64_EOR:
 			case ARM64_SDIV:
-				fprintf(outputFile, "    sdiv %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
+			case ARM64_MUL:
+			case ARM64_ORR:
+			case ARM64_SUB:
+			case ARM64_LSL:
+			case ARM64_LSR:
+			case ARM64_ASR:
+			case ARM64_LSLV:
+			case ARM64_LSRV:
+			case ARM64_ASRV:
+				fprintf(outputFile, "    %s %s, %s, %s\n", instructionName, dstBuffer, srcBuffer, src1Buffer);
 				break;
 			case ARM64_LDR:
-				fprintf(outputFile, "    ldr %s, %s\n", dstBuffer, srcBuffer);
-				break;
-			case ARM64_MUL:
-				fprintf(outputFile, "    mul %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
+			case ARM64_NEG:
+			case ARM64_MVN:
+				fprintf(outputFile, "    %s %s, %s\n", instructionName, dstBuffer, srcBuffer);
 				break;
 			case ARM64_MOV:
 				// Example: mov x0, #100 => "mov x0, #100"
@@ -122,22 +152,14 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 					fprintf(outputFile, "    mov %s, %s\n", dstBuffer, srcBuffer);
 				}
 				break;
-			case ARM64_NEG:
-				fprintf(outputFile, "    neg %s, %s\n", dstBuffer, srcBuffer);
-				break;
-			case ARM64_NOT:
-				fprintf(outputFile, "    mvn %s, %s\n", dstBuffer, srcBuffer);
-				break;
 			case ARM64_RET:
 				// ARM64 epilogue
+				fprintf(outputFile, "    add sp, sp, #%d\n", bytesToAllocate);
 				fprintf(outputFile, "    ldp x29, x30, [sp], #16\n");
 				fprintf(outputFile, "    ret\n");
 				break;
 			case ARM64_STR:
 				fprintf(outputFile, "    str %s, %s\n", srcBuffer, dstBuffer);
-				break;
-			case ARM64_SUB:
-				fprintf(outputFile, "    sub %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
 				break;
 		}
 	}
@@ -147,6 +169,14 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 
 static void emitARM64(ARM64Instruction** instructions, ARM64Instruction arm64Instruction) {
 	arrput(*instructions, arm64Instruction);
+}
+
+static ARM64InstructionType selectShift(bool is_right, bool is_var, bool is_signed)
+{
+	if (!is_right)      return is_var ? ARM64_LSLV : ARM64_LSL;
+	if (is_signed)      return is_var ? ARM64_ASRV : ARM64_ASR;
+	/* unsigned >> */
+	return is_var ? ARM64_LSRV : ARM64_LSR;
 }
 
 // --------------------------------------------------
@@ -191,7 +221,7 @@ void translateTackyToARM64(const TackyProgram* tackyProgram, Program* asmProgram
 							opcodeType = ARM64_NEG;
 							break;
 						case TACKY_COMPLEMENT:
-							opcodeType = ARM64_NOT;
+							opcodeType = ARM64_MVN;
 							break;
 					}
 					
@@ -282,7 +312,53 @@ void translateTackyToARM64(const TackyProgram* tackyProgram, Program* asmProgram
 							}
 							break;
 						}
-					}
+						case TACKY_BITWISE_AND:
+							emitARM64(&arm64Instructions, (ARM64Instruction){
+								.type = ARM64_AND,
+								.src = src0,
+								.src1 = src1,
+								.dst = VAR(instr->binary.dst.varName),
+							});
+							break;
+						case TACKY_BITWISE_OR:
+							emitARM64(&arm64Instructions, (ARM64Instruction){
+								.type = ARM64_ORR,
+								.src = src0,
+								.src1 = src1,
+								.dst = VAR(instr->binary.dst.varName),
+							});
+							break;
+						case TACKY_BITWISE_XOR:
+							emitARM64(&arm64Instructions, (ARM64Instruction){
+								.type = ARM64_EOR,
+								.src = src0,
+								.src1 = src1,
+								.dst = VAR(instr->binary.dst.varName),
+							});
+							break;
+						case TACKY_SHIFT_LEFT: {
+							const bool is_var = (src1.type != OPERAND_IMM);
+							ARM64InstructionType op = selectShift(/*is_right=*/false, is_var, /*is_signed=*/true /*or from type*/);
+							emitARM64(&arm64Instructions, (ARM64Instruction){
+								.type = op,
+								.src  = src0,
+								.src1 = src1,   // #imm or reg; both are fine for the chosen op
+								.dst  = VAR(instr->binary.dst.varName),
+							});
+							break;
+						}
+						case TACKY_SHIFT_RIGHT: {
+							const bool is_var = (src1.type != OPERAND_IMM);
+							const bool is_signed = true; // TODO: derive from the TACKY/semantic type (int => true, unsigned => false)
+							ARM64InstructionType op = selectShift(/*is_right=*/true, is_var, is_signed);
+							emitARM64(&arm64Instructions, (ARM64Instruction){
+								.type = op,
+								.src  = src0,
+								.src1 = src1,
+								.dst  = VAR(instr->binary.dst.varName),
+							});
+							break;
+						}					}
 					break;
 				}
 				case TACKY_INSTR_RETURN: {
@@ -347,7 +423,7 @@ void replacePseudoRegistersARM64(Program* asmProgram) {
 
 void fixupIllegalInstructionsARM64(Program* asmProgram, Program* finalAsmProgram) {
 #define REG(reg) ((Operand){ .type = OPERAND_REGISTER, .regName = reg })
-	const Operand scratch = REG("w10");
+//	const Operand scratch = REG("w10");
 
 	for (size_t iFunc = 0; iFunc < asmProgram->functionCount; iFunc++) {
 		const Function* srcFunc = &asmProgram->functions[iFunc];
@@ -370,11 +446,14 @@ void fixupIllegalInstructionsARM64(Program* asmProgram, Program* finalAsmProgram
 				case ARM64_SUB:
 				case ARM64_MUL:
 				case ARM64_SDIV:
+				case ARM64_AND:
+				case ARM64_ORR:
+				case ARM64_EOR:
 					if (srcIsMemOrImm || src2IsMemOrImm || dstIsMem) {
 						// Load any memory operands to scratch registers
 						Operand reg1 = instr->src;
 						Operand reg2 = instr->src1;
-						Operand dst = instr->dst;
+//						Operand dst = instr->dst;
 
 						if (srcIsMemOrImm) {
 							arrput(fixedInstructions, ((ARM64Instruction){
@@ -425,7 +504,38 @@ void fixupIllegalInstructionsARM64(Program* asmProgram, Program* finalAsmProgram
 				case ARM64_LDR:
 					arrput(fixedInstructions, *instr);
 					break;
+				case ARM64_LSL:
+				case ARM64_LSR:
+				case ARM64_ASR:
+				case ARM64_LSLV:
+				case ARM64_LSRV:
+				case ARM64_ASRV: {
+					bool lhsBad  = (instr->src.type  == OPERAND_STACK_SLOT) || (instr->src.type  == OPERAND_IMM);
+					bool rhsBad  = (instr->src1.type == OPERAND_STACK_SLOT) ||
+								   (instr->src1.type == OPERAND_IMM && (instr->type==ARM64_LSLV || instr->type==ARM64_LSRV || instr->type==ARM64_ASRV));
+					bool dstIsMem = (instr->dst.type == OPERAND_STACK_SLOT);
 
+					Operand lhs = instr->src;
+					Operand rhs = instr->src1;
+					if (lhsBad) {
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = (instr->src.type==OPERAND_STACK_SLOT)?ARM64_LDR:ARM64_MOV, .src = instr->src, .dst = REG("w11") }));
+						lhs = REG("w11");
+					}
+					if (rhsBad) {
+						// Only needed for variable shifts (rhs must be a reg)
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = (instr->src1.type==OPERAND_STACK_SLOT)?ARM64_LDR:ARM64_MOV, .src = instr->src1, .dst = REG("w12") }));
+						rhs = REG("w12");
+					}
+
+					// Emit shift into w10
+					arrput(fixedInstructions, ((ARM64Instruction){ .type = instr->type, .src = lhs, .src1 = rhs, .dst = REG("w10") }));
+
+					if (dstIsMem) {
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = ARM64_STR, .src = REG("w10"), .dst = instr->dst }));
+					} else {
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = ARM64_MOV, .src = REG("w10"), .dst = instr->dst }));
+					}
+				} break;
 				default:
 					// Just pass through anything else
 					arrput(fixedInstructions, *instr);
@@ -451,29 +561,33 @@ void printARM64Function(const Function* function)
 		
 		for (size_t i = 0; i < function->instructionCount; i++) {
 			const ARM64Instruction* instr = &instructions[i];
+			const char* instructionName = getARM64InstructionName(instr->type);
 			switch (instr->type) {
 				case ARM64_ADD:
-					getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-					getARM64Operand(&instr->src1, src1Buffer, sizeof(src1Buffer));
-					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
-					printf("  add %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
-					break;
+				case ARM64_AND:
+				case ARM64_EOR:
 				case ARM64_SDIV:
-					getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-					getARM64Operand(&instr->src1, src1Buffer, sizeof(src1Buffer));
-					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
-					printf("  sdiv %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
-					break;
 				case ARM64_MUL:
+				case ARM64_ORR:
+				case ARM64_SUB:
+				case ARM64_LSL:
+				case ARM64_LSR:
+				case ARM64_ASR:
+				case ARM64_LSLV:
+				case ARM64_LSRV:
+				case ARM64_ASRV:
 					getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 					getARM64Operand(&instr->src1, src1Buffer, sizeof(src1Buffer));
 					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
-					printf("  mul %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
+					printf("  %s %s, %s, %s\n", instructionName, dstBuffer, srcBuffer, src1Buffer);
 					break;
 				case ARM64_LDR:
 					printf("  ldr %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
 					break;
 				case ARM64_MOV:
+#if _DEBUG
+					assert(!(instr->src.type == OPERAND_STACK_SLOT && instr->dst.type == OPERAND_STACK_SLOT) && "mem->mem mov should be legalized earlier");
+#endif
 					if (instr->src.type == OPERAND_REGISTER && instr->dst.type == OPERAND_STACK_SLOT) {
 						printf("  str %s, %s\n", getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)), getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)));
 					} else if (instr->src.type == OPERAND_STACK_SLOT && instr->dst.type == OPERAND_REGISTER) {
@@ -487,7 +601,7 @@ void printARM64Function(const Function* function)
 				case ARM64_NEG:
 					printf("  neg %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
 					break;
-				case ARM64_NOT:
+				case ARM64_MVN:
 					printf("  mvn %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));
 					break;
 				case ARM64_RET:
@@ -495,12 +609,6 @@ void printARM64Function(const Function* function)
 					break;
 				case ARM64_STR:
 					printf("  str %s, %s\n", getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)), getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)));
-					break;
-				case ARM64_SUB:
-					getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
-					getARM64Operand(&instr->src1, src1Buffer, sizeof(src1Buffer));
-					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
-					printf("  sub %s, %s, %s\n", dstBuffer, srcBuffer, src1Buffer);
 					break;
 				default:
 					printf("  Unknown instruction\n");

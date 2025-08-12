@@ -35,17 +35,6 @@ void getX64Operand(const Operand* op, char* buffer, size_t bufferSize) {
 
 static TmpMapping* s_tmpMappings = NULL;
 
-static int getStackOffsetForTmp(const char* tmpName) {
-	for (int i = 0; i < arrlenu(s_tmpMappings); i++) {
-		if (strcmp(s_tmpMappings[i].tmpName, tmpName) == 0) {
-			return s_tmpMappings[i].stackOffset;
-		}
-	}
-	// Should never happen in well formed code
-	fprintf(stderr, "Unknown tmp variable: %s\n", tmpName);
-	exit(EXIT_FAILURE);
-}
-
 static int s_nextOffset = -4; // global or passed in
 
 int getOrAssignStackOffsetX64(const char* tmpName) {

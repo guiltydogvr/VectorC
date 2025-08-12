@@ -14,18 +14,39 @@
 
 // ARM64 instruction types
 typedef enum {
+	// Arithmetic
 	ARM64_ADD,
+	ARM64_SUB,
 	ARM64_MUL,
 	ARM64_SDIV,
-	ARM64_LDR,
+
+	// Bitwise logical
+	ARM64_AND,
+	ARM64_ORR,
+	ARM64_EOR,
+	ARM64_MVN,   // bitwise NOT
+
+	// Shifts (immediate)
+	ARM64_LSL,   // lsl wd, wn, #imm
+	ARM64_LSR,
+	ARM64_ASR,   // asr wd, wn, #imm
+
+	// Shifts (variable)
+	ARM64_LSLV,  // lslv wd, wn, wm
+	ARM64_LSRV,
+	ARM64_ASRV,  // asrv wd, wn, wm
+
+	// Moves and neg
 	ARM64_MOV,
 	ARM64_NEG,
-	ARM64_NOT,
-	ARM64_RET,
-	ARM64_STR,
-	ARM64_SUB,
-} ARM64InstructionType;
 
+	// Load/store
+	ARM64_LDR,
+	ARM64_STR,
+
+	// Control flow
+	ARM64_RET
+} ARM64InstructionType;
 // ARM64 instruction structure
 typedef struct ARM64Instruction {
 	ARM64InstructionType type;
