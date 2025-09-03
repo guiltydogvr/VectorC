@@ -384,21 +384,23 @@ Token scanToken(void) {
 		case '=':
 			return makeToken(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
 		case '<':
-//			return makeToken(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
 			if (match('=')) return makeToken(TOKEN_LESS_EQUAL);
 			if (match('<')) return makeToken(TOKEN_SHIFT_LEFT);
 			return makeToken(TOKEN_LESS);
 		case '>':
-//			return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
 			if (match('=')) return makeToken(TOKEN_GREATER_EQUAL);
 			if (match('>')) return makeToken(TOKEN_SHIFT_RIGHT);
 			return makeToken(TOKEN_GREATER);
 		case '&':
-			return makeToken(TOKEN_AND);
+			if (match('&')) return makeToken(TOKEN_LOGICAL_AND);
+			if (match('=')) return makeToken(TOKEN_AND_EQUAL);
+			return makeToken(TOKEN_BITWISE_AND);
 		case '|':
-			return makeToken(TOKEN_OR);
+			if (match('|')) return makeToken(TOKEN_LOGICAL_OR);
+			if (match('=')) return makeToken(TOKEN_OR_EQUAL);
+			return makeToken(TOKEN_BITWISE_OR);
 		case '^':
-			return makeToken(TOKEN_XOR);
+			return makeToken(TOKEN_BITWISE_XOR);
 		case '"':
 			return string();
 	}
@@ -438,17 +440,19 @@ const char* getTokenName(TokenType tokenType)
 		[TOKEN_IDENTIFIER] = "TOKEN_IDENTIFIER",
 		[TOKEN_STRING] = "TOKEN_STRING",
 		[TOKEN_NUMBER] = "TOKEN_NUMBER",
-		[TOKEN_AND] = "TOKEN_AND",
+		[TOKEN_BITWISE_AND] = "TOKEN_BITWISE_AND",
+		[TOKEN_LOGICAL_AND] = "TOKEN_LOGICAL_AND",
 		[TOKEN_ELSE] = "TOKEN_ELSE",
 		[TOKEN_FALSE] = "TOKEN_FALSE",
 		[TOKEN_FOR] = "TOKEN_FOR",
 		[TOKEN_IF] = "TOKEN_IF",
 		[TOKEN_INT] = "TOKEN_INT",
-		[TOKEN_OR] = "TOKEN_OR",
+		[TOKEN_BITWISE_OR] = "TOKEN_BITWISE_OR",
+		[TOKEN_LOGICAL_OR] = "TOKEN_LOGICAL_OR",
 		[TOKEN_RETURN] = "TOKEN_RETURN",
 		[TOKEN_VOID] = "TOKEN_VOID",
 		[TOKEN_WHILE] = "TOKEN_WHILE",
-		[TOKEN_XOR] = "TOKEN_XOR",
+		[TOKEN_BITWISE_XOR] = "TOKEN_BITWISE_XOR",
 		[TOKEN_ERROR] = "TOKEN_ERROR",
 		[TOKEN_EOF] = "TOKEN_EOF"
 	};
