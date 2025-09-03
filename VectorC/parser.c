@@ -55,36 +55,36 @@ static int getPrecedence(TokenType type) {
 */
 static int getPrecedence(TokenType type) {
 	switch (type) {
-		case TOKEN_STAR:    // *
-		case TOKEN_SLASH:   // /
-		case TOKEN_MOD:     // %
+		case TOKEN_STAR:			// *
+		case TOKEN_SLASH:			// /
+		case TOKEN_MOD:				// %
 			return 20;
 
-		case TOKEN_PLUS:    // +
-		case TOKEN_MINUS:   // -
+		case TOKEN_PLUS:			// +
+		case TOKEN_MINUS:			// -
 			return 15;
 
-		case TOKEN_SHIFT_LEFT:   // <<
-		case TOKEN_SHIFT_RIGHT:  // >>
+		case TOKEN_SHIFT_LEFT:		// <<
+		case TOKEN_SHIFT_RIGHT:		// >>
 			return 14;
 
-		case TOKEN_AND:     // &
+		case TOKEN_BITWISE_AND:		// &
 			return 13;
 
-		case TOKEN_XOR:     // ^
+		case TOKEN_BITWISE_XOR:		// ^
 			return 12;
 
-		case TOKEN_OR:      // |
+		case TOKEN_BITWISE_OR:		// |
 			return 11;
 
-//		case TOKEN_LOGICAL_AND: // &&
-//			return 10;
+		case TOKEN_LOGICAL_AND:		// &&
+			return 10;
 
-//		case TOKEN_LOGICAL_OR:  // ||
-//			return 10;
+		case TOKEN_LOGICAL_OR:		// ||
+			return 10;
 
 		default:
-			return 0; // Not a binary operator
+			return 0;				// Not a binary operator
 	}
 }
 
@@ -130,8 +130,11 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 
 		BinaryOperator op;
 		switch (currentToken(parser)->type) {
-			case TOKEN_AND:
+			case TOKEN_BITWISE_AND:
 				op = BINOP_BITWISE_AND;
+				break;
+			case TOKEN_LOGICAL_AND:
+				op = BINOP_LOGICAL_AND;
 				break;
 			case TOKEN_PLUS:
 				op = BINOP_ADD;
@@ -142,8 +145,11 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 			case TOKEN_MOD:
 				op = BINOP_MODULO;
 				break;
-			case TOKEN_OR:
+			case TOKEN_BITWISE_OR:
 				op = BINOP_BITWISE_OR;
+				break;
+			case TOKEN_LOGICAL_OR:
+				op = BINOP_LOGICAL_OR;
 				break;
 			case TOKEN_SHIFT_LEFT:
 				op = BINOP_SHIFT_LEFT;
@@ -157,7 +163,7 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 			case TOKEN_SLASH:
 				op = BINOP_DIVIDE;
 				break;
-			case TOKEN_XOR:
+			case TOKEN_BITWISE_XOR:
 				op = BINOP_BITWISE_XOR;
 				break;
 			default:

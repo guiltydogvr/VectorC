@@ -39,6 +39,8 @@ typedef enum {
 	BINOP_BITWISE_XOR,
 	BINOP_SHIFT_LEFT,
 	BINOP_SHIFT_RIGHT,
+	BINOP_LOGICAL_AND,
+	BINOP_LOGICAL_OR,
 } BinaryOperator;
 
 typedef enum {

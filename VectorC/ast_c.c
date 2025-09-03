@@ -114,6 +114,12 @@ void printExpression(const ExpressionNode* expr, int indent) {
 				case BINOP_MODULO:
 					opStr = "%";
 					break;
+				case BINOP_LOGICAL_AND:
+					opStr = "&&";
+					break;
+				case BINOP_LOGICAL_OR:
+					opStr = "||";
+					break;
 				default:
 					opStr = "?";
 					break;
