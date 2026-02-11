@@ -60,6 +60,49 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 		const char* dstName = newTempVarName();
 		TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
 
+		if (expr->value.binary.op == BINOP_LOGICAL_AND || expr->value.binary.op == BINOP_LOGICAL_OR) {
+			const char* lhsBoolName = newTempVarName();
+			TackyValue lhsBool = { .type = TACKY_VAL_VAR, .varName = lhsBoolName };
+
+			TackyInstruction lhsToBool = {
+				.type = TACKY_INSTR_BINARY,
+				.binary = {
+					.op = TACKY_NE,
+					.lhs = lhs,
+					.rhs = (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 },
+					.dst = lhsBool
+				}
+			};
+			arrput(func->instructions, lhsToBool);
+
+			const char* rhsBoolName = newTempVarName();
+			TackyValue rhsBool = { .type = TACKY_VAL_VAR, .varName = rhsBoolName };
+
+			TackyInstruction rhsToBool = {
+				.type = TACKY_INSTR_BINARY,
+				.binary = {
+					.op = TACKY_NE,
+					.lhs = rhs,
+					.rhs = (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 },
+					.dst = rhsBool
+				}
+			};
+			arrput(func->instructions, rhsToBool);
+
+			TackyInstruction logicalInstr = {
+				.type = TACKY_INSTR_BINARY,
+				.binary = {
+					.op = (expr->value.binary.op == BINOP_LOGICAL_AND) ? TACKY_BITWISE_AND : TACKY_BITWISE_OR,
+					.lhs = lhsBool,
+					.rhs = rhsBool,
+					.dst = dst
+				}
+			};
+			arrput(func->instructions, logicalInstr);
+
+			return dst;
+		}
+
 		TackyBinaryOperator op;
 		switch (expr->value.binary.op) {
 			case BINOP_ADD:
