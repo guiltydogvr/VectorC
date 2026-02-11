@@ -74,10 +74,19 @@ const char* getARM64InstructionName(ARM64InstructionType type)
 		[ARM64_SUB] = "sub",
 		// Shifts (immediate)
 		[ARM64_LSL] = "lsl",   // lsl wd, wn, #imm
+		[ARM64_LSR] = "lsr",
 		[ARM64_ASR] = "asr",   // asr wd, wn, #imm
 		// Shifts (variable)
 		[ARM64_LSLV] = "lslv",  // lslv wd, wn, wm
+		[ARM64_LSRV] = "lsrv",
 		[ARM64_ASRV] = "asrv",  // asrv wd, wn, wm
+		[ARM64_CMP] = "cmp",
+		[ARM64_CSET_EQ] = "cset",
+		[ARM64_CSET_NE] = "cset",
+		[ARM64_CSET_LT] = "cset",
+		[ARM64_CSET_LE] = "cset",
+		[ARM64_CSET_GT] = "cset",
+		[ARM64_CSET_GE] = "cset",
 
 	};
 
@@ -138,6 +147,27 @@ void generateARM64Function(FILE* outputFile, const Function* func)
 			case ARM64_NEG:
 			case ARM64_MVN:
 				fprintf(outputFile, "    %s %s, %s\n", instructionName, dstBuffer, srcBuffer);
+				break;
+			case ARM64_CMP:
+				fprintf(outputFile, "    cmp %s, %s\n", srcBuffer, src1Buffer);
+				break;
+			case ARM64_CSET_EQ:
+				fprintf(outputFile, "    cset %s, eq\n", dstBuffer);
+				break;
+			case ARM64_CSET_NE:
+				fprintf(outputFile, "    cset %s, ne\n", dstBuffer);
+				break;
+			case ARM64_CSET_LT:
+				fprintf(outputFile, "    cset %s, lt\n", dstBuffer);
+				break;
+			case ARM64_CSET_LE:
+				fprintf(outputFile, "    cset %s, le\n", dstBuffer);
+				break;
+			case ARM64_CSET_GT:
+				fprintf(outputFile, "    cset %s, gt\n", dstBuffer);
+				break;
+			case ARM64_CSET_GE:
+				fprintf(outputFile, "    cset %s, ge\n", dstBuffer);
 				break;
 			case ARM64_MOV:
 				// Example: mov x0, #100 => "mov x0, #100"
@@ -358,7 +388,32 @@ void translateTackyToARM64(const TackyProgram* tackyProgram, Program* asmProgram
 								.dst  = VAR(instr->binary.dst.varName),
 							});
 							break;
-						}					}
+						}
+						case TACKY_EQ:
+						case TACKY_NE:
+						case TACKY_LT:
+						case TACKY_LE:
+						case TACKY_GT:
+						case TACKY_GE: {
+							emitARM64(&arm64Instructions, (ARM64Instruction){
+								.type = ARM64_CMP,
+								.src = src0,
+								.src1 = src1,
+							});
+							ARM64InstructionType csetType =
+								(instr->binary.op == TACKY_EQ) ? ARM64_CSET_EQ :
+								(instr->binary.op == TACKY_NE) ? ARM64_CSET_NE :
+								(instr->binary.op == TACKY_LT) ? ARM64_CSET_LT :
+								(instr->binary.op == TACKY_LE) ? ARM64_CSET_LE :
+								(instr->binary.op == TACKY_GT) ? ARM64_CSET_GT :
+								/* TACKY_GE */                 ARM64_CSET_GE;
+							emitARM64(&arm64Instructions, (ARM64Instruction){
+								.type = csetType,
+								.dst = VAR(instr->binary.dst.varName),
+							});
+							break;
+						}
+					}
 					break;
 				}
 				case TACKY_INSTR_RETURN: {
@@ -499,6 +554,33 @@ void fixupIllegalInstructionsARM64(Program* asmProgram, Program* finalAsmProgram
 					}
 					break;
 
+				case ARM64_CMP: {
+					Operand lhs = instr->src;
+					Operand rhs = instr->src1;
+					if (instr->src.type == OPERAND_STACK_SLOT || instr->src.type == OPERAND_IMM) {
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = (instr->src.type==OPERAND_STACK_SLOT)?ARM64_LDR:ARM64_MOV, .src = instr->src, .dst = REG("w11") }));
+						lhs = REG("w11");
+					}
+					if (instr->src1.type == OPERAND_STACK_SLOT || instr->src1.type == OPERAND_IMM) {
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = (instr->src1.type==OPERAND_STACK_SLOT)?ARM64_LDR:ARM64_MOV, .src = instr->src1, .dst = REG("w12") }));
+						rhs = REG("w12");
+					}
+					arrput(fixedInstructions, ((ARM64Instruction){ .type = ARM64_CMP, .src = lhs, .src1 = rhs }));
+					break;
+				}
+				case ARM64_CSET_EQ:
+				case ARM64_CSET_NE:
+				case ARM64_CSET_LT:
+				case ARM64_CSET_LE:
+				case ARM64_CSET_GT:
+				case ARM64_CSET_GE:
+					if (instr->dst.type == OPERAND_STACK_SLOT) {
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = instr->type, .dst = REG("w10") }));
+						arrput(fixedInstructions, ((ARM64Instruction){ .type = ARM64_STR, .src = REG("w10"), .dst = instr->dst }));
+					} else {
+						arrput(fixedInstructions, *instr);
+					}
+					break;
 				case ARM64_MOV:
 				case ARM64_STR:
 				case ARM64_LDR:
@@ -580,6 +662,35 @@ void printARM64Function(const Function* function)
 					getARM64Operand(&instr->src1, src1Buffer, sizeof(src1Buffer));
 					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
 					printf("  %s %s, %s, %s\n", instructionName, dstBuffer, srcBuffer, src1Buffer);
+					break;
+				case ARM64_CMP:
+					getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+					getARM64Operand(&instr->src1, src1Buffer, sizeof(src1Buffer));
+					printf("  cmp %s, %s\n", srcBuffer, src1Buffer);
+					break;
+				case ARM64_CSET_EQ:
+					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+					printf("  cset %s, eq\n", dstBuffer);
+					break;
+				case ARM64_CSET_NE:
+					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+					printf("  cset %s, ne\n", dstBuffer);
+					break;
+				case ARM64_CSET_LT:
+					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+					printf("  cset %s, lt\n", dstBuffer);
+					break;
+				case ARM64_CSET_LE:
+					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+					printf("  cset %s, le\n", dstBuffer);
+					break;
+				case ARM64_CSET_GT:
+					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+					printf("  cset %s, gt\n", dstBuffer);
+					break;
+				case ARM64_CSET_GE:
+					getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+					printf("  cset %s, ge\n", dstBuffer);
 					break;
 				case ARM64_LDR:
 					printf("  ldr %s, %s\n", getARM64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer)), getARM64Operand(&instr->src, srcBuffer, sizeof(srcBuffer)));

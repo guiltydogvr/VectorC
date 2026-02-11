@@ -60,6 +60,49 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 		const char* dstName = newTempVarName();
 		TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
 
+		if (expr->value.binary.op == BINOP_LOGICAL_AND || expr->value.binary.op == BINOP_LOGICAL_OR) {
+			const char* lhsBoolName = newTempVarName();
+			TackyValue lhsBool = { .type = TACKY_VAL_VAR, .varName = lhsBoolName };
+
+			TackyInstruction lhsToBool = {
+				.type = TACKY_INSTR_BINARY,
+				.binary = {
+					.op = TACKY_NE,
+					.lhs = lhs,
+					.rhs = (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 },
+					.dst = lhsBool
+				}
+			};
+			arrput(func->instructions, lhsToBool);
+
+			const char* rhsBoolName = newTempVarName();
+			TackyValue rhsBool = { .type = TACKY_VAL_VAR, .varName = rhsBoolName };
+
+			TackyInstruction rhsToBool = {
+				.type = TACKY_INSTR_BINARY,
+				.binary = {
+					.op = TACKY_NE,
+					.lhs = rhs,
+					.rhs = (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 },
+					.dst = rhsBool
+				}
+			};
+			arrput(func->instructions, rhsToBool);
+
+			TackyInstruction logicalInstr = {
+				.type = TACKY_INSTR_BINARY,
+				.binary = {
+					.op = (expr->value.binary.op == BINOP_LOGICAL_AND) ? TACKY_BITWISE_AND : TACKY_BITWISE_OR,
+					.lhs = lhsBool,
+					.rhs = rhsBool,
+					.dst = dst
+				}
+			};
+			arrput(func->instructions, logicalInstr);
+
+			return dst;
+		}
+
 		TackyBinaryOperator op;
 		switch (expr->value.binary.op) {
 			case BINOP_ADD:
@@ -91,6 +134,24 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 				break;
 			case BINOP_SHIFT_RIGHT:
 				op = TACKY_SHIFT_RIGHT;
+				break;
+			case BINOP_EQ:
+				op = TACKY_EQ;
+				break;
+			case BINOP_NE:
+				op = TACKY_NE;
+				break;
+			case BINOP_LT:
+				op = TACKY_LT;
+				break;
+			case BINOP_LE:
+				op = TACKY_LE;
+				break;
+			case BINOP_GT:
+				op = TACKY_GT;
+				break;
+			case BINOP_GE:
+				op = TACKY_GE;
 				break;
 			default:
 				fprintf(stderr, "Unknown binary operator in TACKY generation\n");
@@ -218,6 +279,24 @@ void printTackyProgram(const TackyProgram* program) {
 							break;
 						case TACKY_SHIFT_RIGHT:
 							opString = "Shr";
+							break;
+						case TACKY_EQ:
+							opString = "Eq";
+							break;
+						case TACKY_NE:
+							opString = "Ne";
+							break;
+						case TACKY_LT:
+							opString = "Lt";
+							break;
+						case TACKY_LE:
+							opString = "Le";
+							break;
+						case TACKY_GT:
+							opString = "Gt";
+							break;
+						case TACKY_GE:
+							opString = "Ge";
 							break;
 					}
 					printf("        Binary(%s, ", opString);

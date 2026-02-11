@@ -32,6 +32,12 @@ typedef enum {
 	TACKY_BITWISE_XOR,		// bitwise ^
 	TACKY_SHIFT_LEFT,		// <<
 	TACKY_SHIFT_RIGHT,		// >>
+	TACKY_EQ,
+	TACKY_NE,
+	TACKY_LT,
+	TACKY_LE,
+	TACKY_GT,
+	TACKY_GE,
 } TackyBinaryOperator;
 
 typedef enum {
