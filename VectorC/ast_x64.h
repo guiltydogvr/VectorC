@@ -26,6 +26,14 @@ typedef enum {
 	X64_RET,
 	X64_SUB,
 	X64_XOR,
+	X64_CMP,
+	X64_SETE,
+	X64_SETNE,
+	X64_SETL,
+	X64_SETLE,
+	X64_SETG,
+	X64_SETGE,
+	X64_MOVZX,
 	// Shifts
 	X64_SHL_IMM, // shl $imm, r/m32
 	X64_SHL_CL,  // shl %cl, r/m32

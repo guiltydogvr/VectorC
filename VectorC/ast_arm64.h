@@ -44,6 +44,15 @@ typedef enum {
 	ARM64_LDR,
 	ARM64_STR,
 
+	// Comparisons
+	ARM64_CMP,
+	ARM64_CSET_EQ,
+	ARM64_CSET_NE,
+	ARM64_CSET_LT,
+	ARM64_CSET_LE,
+	ARM64_CSET_GT,
+	ARM64_CSET_GE,
+
 	// Control flow
 	ARM64_RET
 } ARM64InstructionType;

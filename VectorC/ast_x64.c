@@ -98,6 +98,9 @@ void generateX64Function(FILE* outputFile, const Function* func)
 			case X64_CDQ:
 				fprintf(outputFile, "    cdq\n");
 				break;
+			case X64_CMP:
+				fprintf(outputFile, "    cmpl %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_IDIV:
 				fprintf(outputFile, "    idivl %s\n", srcBuffer);
 				break;
@@ -116,6 +119,27 @@ void generateX64Function(FILE* outputFile, const Function* func)
 				break;
 			case X64_OR:
 				fprintf(outputFile, "    orl %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			case X64_SETE:
+				fprintf(outputFile, "    sete %s\n", dstBuffer);
+				break;
+			case X64_SETNE:
+				fprintf(outputFile, "    setne %s\n", dstBuffer);
+				break;
+			case X64_SETL:
+				fprintf(outputFile, "    setl %s\n", dstBuffer);
+				break;
+			case X64_SETLE:
+				fprintf(outputFile, "    setle %s\n", dstBuffer);
+				break;
+			case X64_SETG:
+				fprintf(outputFile, "    setg %s\n", dstBuffer);
+				break;
+			case X64_SETGE:
+				fprintf(outputFile, "    setge %s\n", dstBuffer);
+				break;
+			case X64_MOVZX:
+				fprintf(outputFile, "    movzbl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 			case X64_RET:
 				// X86-64 epilogue
@@ -240,6 +264,41 @@ void translateTackyToX64(const TackyProgram* tackyProgram, Program* asmProgram) 
 							.dst  = VAR(instr->binary.dst.varName),
 						});
 						break; // done with DIV/MOD
+					}
+
+					if (op == TACKY_EQ || op == TACKY_NE || op == TACKY_LT || op == TACKY_LE || op == TACKY_GT || op == TACKY_GE) {
+						Operand lhs = (instr->binary.lhs.type == TACKY_VAL_CONSTANT)
+							? IMM(instr->binary.lhs.constantValue)
+							: VAR(instr->binary.lhs.varName);
+						Operand rhs = (instr->binary.rhs.type == TACKY_VAL_CONSTANT)
+							? IMM(instr->binary.rhs.constantValue)
+							: VAR(instr->binary.rhs.varName);
+
+						emitX64(&x64Instructions, (X64Instruction){
+							.type = X64_CMP,
+							.src = rhs,
+							.dst = lhs
+						});
+
+						emitX64(&x64Instructions, (X64Instruction){
+							.type = X64_MOV,
+							.src = IMM(0),
+							.dst = VAR(instr->binary.dst.varName),
+						});
+
+						X64InstructionType setcc =
+							(op == TACKY_EQ) ? X64_SETE :
+							(op == TACKY_NE) ? X64_SETNE :
+							(op == TACKY_LT) ? X64_SETL :
+							(op == TACKY_LE) ? X64_SETLE :
+							(op == TACKY_GT) ? X64_SETG :
+							/* TACKY_GE */    X64_SETGE;
+
+						emitX64(&x64Instructions, (X64Instruction){
+							.type = setcc,
+							.dst = VAR(instr->binary.dst.varName),
+						});
+						break;
 					}
 
 					// --- Generic path: dst = lhs; then apply op with rhs (covers & | ^ << >> and + - *) ---
@@ -433,6 +492,33 @@ void fixupIllegalInstructionsX64(Program* asmProgram, Program* finalAsmProgram) 
 						arrput(fixedInstructions, *instr);  // fallback
 					}
 					break;
+				case X64_CMP:
+					if (instr->dst.type == OPERAND_IMM) {
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = instr->dst,
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_CMP,
+							.src = instr->src,
+							.dst = scratch
+						}));
+					} else if (srcIsMem && dstIsMem) {
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_MOV,
+							.src = instr->src,
+							.dst = scratch
+						}));
+						arrput(fixedInstructions, ((X64Instruction){
+							.type = X64_CMP,
+							.src = scratch,
+							.dst = instr->dst
+						}));
+					} else {
+						arrput(fixedInstructions, *instr);
+					}
+					break;
 				case X64_IDIV:
 					if (instr->src.type == OPERAND_IMM) {
 						arrput(fixedInstructions, ((X64Instruction){
@@ -485,6 +571,11 @@ void printX64Function(const Function* function) {
 			case X64_CDQ:
 				printf("  cdq\n");
 				break;
+			case X64_CMP:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  cmpl %s, %s\n", srcBuffer, dstBuffer);
+				break;
 			case X64_IDIV:
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
@@ -512,6 +603,35 @@ void printX64Function(const Function* function) {
 				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
 				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
 				printf("  orl %s, %s\n", srcBuffer, dstBuffer);
+				break;
+			case X64_SETE:
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  sete %s\n", dstBuffer);
+				break;
+			case X64_SETNE:
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  setne %s\n", dstBuffer);
+				break;
+			case X64_SETL:
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  setl %s\n", dstBuffer);
+				break;
+			case X64_SETLE:
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  setle %s\n", dstBuffer);
+				break;
+			case X64_SETG:
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  setg %s\n", dstBuffer);
+				break;
+			case X64_SETGE:
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  setge %s\n", dstBuffer);
+				break;
+			case X64_MOVZX:
+				getX64Operand(&instr->src, srcBuffer, sizeof(srcBuffer));
+				getX64Operand(&instr->dst, dstBuffer, sizeof(dstBuffer));
+				printf("  movzbl %s, %s\n", srcBuffer, dstBuffer);
 				break;
 			case X64_RET:
 				printf("  ret\n");
