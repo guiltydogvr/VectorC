@@ -58,30 +58,38 @@ static int getPrecedence(TokenType type) {
 		case TOKEN_STAR:			// *
 		case TOKEN_SLASH:			// /
 		case TOKEN_MOD:				// %
-			return 20;
+			return 80;
 
 		case TOKEN_PLUS:			// +
 		case TOKEN_MINUS:			// -
-			return 15;
+			return 60;
 
 		case TOKEN_SHIFT_LEFT:		// <<
 		case TOKEN_SHIFT_RIGHT:		// >>
-			return 14;
+			return 56;
 
+		case TOKEN_LESS:
+		case TOKEN_LESS_EQUAL:
+		case TOKEN_GREATER:
+		case TOKEN_GREATER_EQUAL:
+			return 55;
+			
+		case TOKEN_EQUAL_EQUAL:
+		case TOKEN_BANG_EQUAL:
+			return 53;
+			
 		case TOKEN_BITWISE_AND:		// &
-			return 13;
+			return 52;
 
 		case TOKEN_BITWISE_XOR:		// ^
-			return 12;
+			return 48;
 
 		case TOKEN_BITWISE_OR:		// |
-			return 11;
+			return 44;
 
 		case TOKEN_LOGICAL_AND:		// &&
-			return 10;
-
 		case TOKEN_LOGICAL_OR:		// ||
-			return 10;
+			return 40;
 
 		default:
 			return 0;				// Not a binary operator
@@ -165,6 +173,24 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 				break;
 			case TOKEN_BITWISE_XOR:
 				op = BINOP_BITWISE_XOR;
+				break;
+			case TOKEN_EQUAL_EQUAL:
+				op = BINOP_EQ;
+				break;
+			case TOKEN_BANG_EQUAL:
+				op = BINOP_NE;
+				break;
+			case TOKEN_LESS:
+				op = BINOP_LT;
+				break;
+			case TOKEN_LESS_EQUAL:
+				op = BINOP_LE;
+				break;
+			case TOKEN_GREATER:
+				op = BINOP_GT;
+				break;
+			case TOKEN_GREATER_EQUAL:
+				op = BINOP_GE;
 				break;
 			default:
 				printf("Unknown binary operator\n");

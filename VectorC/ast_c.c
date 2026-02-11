@@ -120,6 +120,24 @@ void printExpression(const ExpressionNode* expr, int indent) {
 				case BINOP_LOGICAL_OR:
 					opStr = "||";
 					break;
+				case BINOP_EQ:
+					opStr = "==";
+					break;
+				case BINOP_NE:
+					opStr = "!=";
+					break;
+				case BINOP_LT:
+					opStr = "<";
+					break;
+				case BINOP_LE:
+					opStr = "<=";
+					break;
+				case BINOP_GT:
+					opStr = ">";
+					break;
+				case BINOP_GE:
+					opStr = ">=";
+					break;
 				default:
 					opStr = "?";
 					break;
