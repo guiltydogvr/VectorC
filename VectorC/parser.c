@@ -88,8 +88,10 @@ static int getPrecedence(TokenType type) {
 			return 44;
 
 		case TOKEN_LOGICAL_AND:		// &&
-		case TOKEN_LOGICAL_OR:		// ||
 			return 40;
+
+		case TOKEN_LOGICAL_OR:		// ||
+			return 39;
 
 		default:
 			return 0;				// Not a binary operator
