@@ -125,6 +125,9 @@ ExpressionNode* parseExpression(Parser* parser, int minPrec) {
 	else if (match(parser, TOKEN_MINUS)) {
 		left = createUnaryNode(UNARY_NEGATE, parseExpression(parser, 100));
 	}
+	else if (match(parser, TOKEN_BANG)) {
+		left = createUnaryNode(UNARY_LOGICAL_NOT, parseExpression(parser, 100));
+	}
 	else if (match(parser, TOKEN_NUMBER)) {
 		const Token* previousToken = &parser->tokens[parser->current - 1];
 		left = createIntConstant(previousToken->value.intValue);
@@ -224,6 +227,10 @@ ExpressionNode* parseFactor(Parser* parser) {
 	else if (match(parser, TOKEN_MINUS)) {  // Negation (-)
 		ExpressionNode* operand = parseFactor(parser);
 		return createUnaryNode(UNARY_NEGATE, operand);
+	}
+	else if (match(parser, TOKEN_BANG)) {  // Logical NOT (!)
+		ExpressionNode* operand = parseFactor(parser);
+		return createUnaryNode(UNARY_LOGICAL_NOT, operand);
 	}
 	else if (match(parser, TOKEN_NUMBER)) {  // Constant numbers
 		const Token* token = &parser->tokens[parser->current - 1];

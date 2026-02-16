@@ -25,7 +25,8 @@ typedef enum {
 
 typedef enum {
 	UNARY_COMPLEMENT,  // Bitwise NOT (~x)
-	UNARY_NEGATE       // Negation (-x)
+	UNARY_NEGATE,      // Negation (-x)
+	UNARY_LOGICAL_NOT  // Logical NOT (!x)
 } UnaryOperator;
 
 typedef enum {

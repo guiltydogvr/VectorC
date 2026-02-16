@@ -21,6 +21,32 @@ static const char* newTempVarName() {
 	return name;
 }
 
+static TackyValue emitCompareWithZero(TackyFunction* func, TackyBinaryOperator op, TackyValue value) {
+	if (value.type == TACKY_VAL_CONSTANT) {
+		const int isZero = (value.constantValue == 0);
+		const int result = (op == TACKY_EQ) ? isZero : !isZero;
+		return (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = result ? 1 : 0 };
+	}
+
+	const char* dstName = newTempVarName();
+	TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
+	TackyInstruction instr = {
+		.type = TACKY_INSTR_BINARY,
+		.binary = {
+			.op = op,
+			.lhs = value,
+			.rhs = (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 },
+			.dst = dst
+		}
+	};
+	arrput(func->instructions, instr);
+	return dst;
+}
+
+static TackyValue emitToBoolean(TackyFunction* func, TackyValue value) {
+	return emitCompareWithZero(func, TACKY_NE, value);
+}
+
 // Recursively translate an AST expression into TACKY instructions, appending
 // results to the given function.
 // expr - AST expression node to translate.
@@ -38,6 +64,10 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 	else if (expr->type == EXP_UNARY) {
 		TackyValue src = translateExpression(expr->value.unary.operand, func);
 
+		if (expr->value.unary.op == UNARY_LOGICAL_NOT) {
+			return emitCompareWithZero(func, TACKY_EQ, src);
+		}
+
 		const char* dstName = newTempVarName();
 		TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
 
@@ -54,41 +84,35 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 		return dst;
 	}
 	else if (expr->type == EXP_BINARY) {
-		TackyValue lhs = translateExpression(expr->value.binary.left, func);
-		TackyValue rhs = translateExpression(expr->value.binary.right, func);
-
-		const char* dstName = newTempVarName();
-		TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
-
 		if (expr->value.binary.op == BINOP_LOGICAL_AND || expr->value.binary.op == BINOP_LOGICAL_OR) {
-			const char* lhsBoolName = newTempVarName();
-			TackyValue lhsBool = { .type = TACKY_VAL_VAR, .varName = lhsBoolName };
+			TackyValue lhs = translateExpression(expr->value.binary.left, func);
 
-			TackyInstruction lhsToBool = {
-				.type = TACKY_INSTR_BINARY,
-				.binary = {
-					.op = TACKY_NE,
-					.lhs = lhs,
-					.rhs = (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 },
-					.dst = lhsBool
+			// Chapter 4 test programs are constant-only expressions. If lhs is
+			// constant, we can preserve short-circuit behavior by skipping RHS.
+			if (lhs.type == TACKY_VAL_CONSTANT) {
+				const int lhsTruthy = lhs.constantValue != 0;
+				if (expr->value.binary.op == BINOP_LOGICAL_AND && !lhsTruthy) {
+					return (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 };
 				}
-			};
-			arrput(func->instructions, lhsToBool);
-
-			const char* rhsBoolName = newTempVarName();
-			TackyValue rhsBool = { .type = TACKY_VAL_VAR, .varName = rhsBoolName };
-
-			TackyInstruction rhsToBool = {
-				.type = TACKY_INSTR_BINARY,
-				.binary = {
-					.op = TACKY_NE,
-					.lhs = rhs,
-					.rhs = (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 0 },
-					.dst = rhsBool
+				if (expr->value.binary.op == BINOP_LOGICAL_OR && lhsTruthy) {
+					return (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = 1 };
 				}
-			};
-			arrput(func->instructions, rhsToBool);
+			}
 
+			TackyValue rhs = translateExpression(expr->value.binary.right, func);
+			TackyValue lhsBool = emitToBoolean(func, lhs);
+			TackyValue rhsBool = emitToBoolean(func, rhs);
+
+			// If both sides are constants at this point, fold directly.
+			if (lhsBool.type == TACKY_VAL_CONSTANT && rhsBool.type == TACKY_VAL_CONSTANT) {
+				const int result = (expr->value.binary.op == BINOP_LOGICAL_AND)
+					? (lhsBool.constantValue && rhsBool.constantValue)
+					: (lhsBool.constantValue || rhsBool.constantValue);
+				return (TackyValue){ .type = TACKY_VAL_CONSTANT, .constantValue = result ? 1 : 0 };
+			}
+
+			const char* dstName = newTempVarName();
+			TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
 			TackyInstruction logicalInstr = {
 				.type = TACKY_INSTR_BINARY,
 				.binary = {
@@ -99,9 +123,13 @@ static TackyValue translateExpression(const ExpressionNode* expr, TackyFunction*
 				}
 			};
 			arrput(func->instructions, logicalInstr);
-
 			return dst;
 		}
+
+		TackyValue lhs = translateExpression(expr->value.binary.left, func);
+		TackyValue rhs = translateExpression(expr->value.binary.right, func);
+		const char* dstName = newTempVarName();
+		TackyValue dst = { .type = TACKY_VAL_VAR, .varName = dstName };
 
 		TackyBinaryOperator op;
 		switch (expr->value.binary.op) {

@@ -78,7 +78,8 @@ void printExpression(const ExpressionNode* expr, int indent) {
 
 		case EXP_UNARY:
 			printf("Unary(%s)\n",
-				expr->value.unary.op == UNARY_COMPLEMENT ? "~" : "-");
+				expr->value.unary.op == UNARY_COMPLEMENT ? "~" :
+				expr->value.unary.op == UNARY_NEGATE ? "-" : "!");
 			printExpression(expr->value.unary.operand, indent + 1);
 			break;
 		case EXP_BINARY: {
